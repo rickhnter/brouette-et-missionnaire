@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Heart } from 'lucide-react';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Heart } from "lucide-react";
 
 interface LoginScreenProps {
   onLogin: (name: string) => void;
@@ -23,37 +23,31 @@ export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
           <div className="mx-auto w-16 h-16 bg-gradient-to-br from-rose-400 to-pink-500 rounded-full flex items-center justify-center">
             <Heart className="w-8 h-8 text-white fill-white" />
           </div>
-          <CardTitle className="text-2xl font-serif text-rose-800">
-            Jeu des Questions
-          </CardTitle>
-          <CardDescription className="text-rose-600">
-            Découvrez-vous à travers des questions intimes
-          </CardDescription>
+          <CardTitle className="text-2xl font-serif text-rose-800">Brouette & Missionnaire</CardTitle>
+          <CardDescription className="text-rose-600">Découvrez-vous à travers des questions intimes</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="text-center text-sm text-rose-600 mb-4">
-            Qui êtes-vous ?
-          </div>
+          <div className="text-center text-sm text-rose-600 mb-4">Qui êtes-vous ?</div>
           <div className="grid grid-cols-2 gap-4">
             <Button
-              variant={selectedPlayer === 'Pierrick' ? 'default' : 'outline'}
+              variant={selectedPlayer === "Pierrick" ? "default" : "outline"}
               className={`h-20 text-lg font-medium transition-all ${
-                selectedPlayer === 'Pierrick'
-                  ? 'bg-gradient-to-br from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white border-0'
-                  : 'border-rose-300 text-rose-700 hover:bg-rose-50 hover:border-rose-400'
+                selectedPlayer === "Pierrick"
+                  ? "bg-gradient-to-br from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white border-0"
+                  : "border-rose-300 text-rose-700 hover:bg-rose-50 hover:border-rose-400"
               }`}
-              onClick={() => setSelectedPlayer('Pierrick')}
+              onClick={() => setSelectedPlayer("Pierrick")}
             >
               Pierrick
             </Button>
             <Button
-              variant={selectedPlayer === 'Daisy' ? 'default' : 'outline'}
+              variant={selectedPlayer === "Daisy" ? "default" : "outline"}
               className={`h-20 text-lg font-medium transition-all ${
-                selectedPlayer === 'Daisy'
-                  ? 'bg-gradient-to-br from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white border-0'
-                  : 'border-rose-300 text-rose-700 hover:bg-rose-50 hover:border-rose-400'
+                selectedPlayer === "Daisy"
+                  ? "bg-gradient-to-br from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white border-0"
+                  : "border-rose-300 text-rose-700 hover:bg-rose-50 hover:border-rose-400"
               }`}
-              onClick={() => setSelectedPlayer('Daisy')}
+              onClick={() => setSelectedPlayer("Daisy")}
             >
               Daisy
             </Button>
