@@ -20,12 +20,8 @@ export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
     <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center space-y-4">
-          <img 
-            src={logo} 
-            alt="Brouette & Missionnaire" 
-            className="mx-auto w-64 h-auto"
-          />
-          <CardDescription className="text-rose-600">Découvrez-vous à travers des questions intimes</CardDescription>
+          <img src={logo} alt="Brouette & Missionnaire" className="mx-auto w-64 h-auto" />
+          <CardDescription className="text-rose-600">Découvrez-vous.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="text-center text-sm text-rose-600 mb-4">Qui êtes-vous ?</div>
