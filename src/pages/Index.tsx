@@ -83,11 +83,18 @@ const Index = () => {
       }
     }
 
-    // Si une question est déjà sélectionnée, passer à l'écran de question
+    // Si une question est déjà sélectionnée et on est en waiting, restaurer l'état approprié
     if (session.current_question_id && gameState === 'waiting') {
-      setGameState('question');
+      // Déterminer le bon état en fonction des réponses existantes
+      if (playerAnswered && partnerAnswered) {
+        setGameState('reveal');
+      } else if (playerAnswered && !partnerAnswered) {
+        setGameState('waiting-partner');
+      } else {
+        setGameState('question');
+      }
     }
-  }, [session, gameState, playerName, startGame]);
+  }, [session, gameState, playerName, startGame, playerAnswered, partnerAnswered]);
 
   // Réinitialiser l'état quand la question change
   const [lastQuestionId, setLastQuestionId] = useState<string | null>(null);
