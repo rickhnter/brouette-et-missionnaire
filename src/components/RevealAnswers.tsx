@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface RevealAnswersProps {
   question: string;
@@ -26,10 +26,7 @@ export const RevealAnswers = ({
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4">
       <Card className="w-full max-w-lg bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-12 h-12 bg-gradient-to-br from-rose-400 to-pink-500 rounded-full flex items-center justify-center">
-            <Heart className="w-6 h-6 text-white fill-white" />
-          </div>
+        <CardHeader className="text-center">
           <CardTitle className="text-lg font-serif text-rose-800 leading-relaxed">
             {question}
           </CardTitle>
@@ -44,11 +41,6 @@ export const RevealAnswers = ({
               ) : (
                 <p className="text-rose-800 font-medium">{playerAnswer}</p>
               )}
-            </div>
-
-            {/* Séparateur cœur */}
-            <div className="flex items-center justify-center">
-              <Heart className="w-6 h-6 text-rose-400 fill-rose-400" />
             </div>
 
             {/* Réponse du partenaire */}
