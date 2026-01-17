@@ -15,6 +15,8 @@ interface Question {
 interface QuestionScreenProps {
   question: Question;
   playerName: string;
+  currentIndex: number;
+  totalQuestions: number;
   onAnswer: (answer: string) => void;
   onSkip: () => void;
 }
@@ -37,6 +39,8 @@ const LevelIcons = ({ level }: { level: number }) => {
 export const QuestionScreen = ({
   question,
   playerName,
+  currentIndex,
+  totalQuestions,
   onAnswer,
   onSkip
 }: QuestionScreenProps) => {
@@ -65,6 +69,9 @@ export const QuestionScreen = ({
       <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4">
         <Card className="w-full max-w-lg bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
           <CardHeader className="text-center space-y-4">
+            <div className="text-sm text-rose-400 font-medium">
+              Question {currentIndex} / {totalQuestions}
+            </div>
             <LevelIcons level={question.level} />
           </CardHeader>
           <CardContent className="space-y-6">
