@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useQuestions } from '@/hooks/useQuestions';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Pencil, Check, X } from 'lucide-react';
 
 const Questions = () => {
   const { questions, loading, refetch } = useQuestions();
@@ -15,6 +16,8 @@ const Questions = () => {
   const [importText, setImportText] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('1');
   const [isImporting, setIsImporting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
 
   const handleImport = async () => {
     if (!importText.trim()) {
@@ -87,6 +90,44 @@ const Questions = () => {
         description: 'Question supprimée',
       });
       
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: 'Erreur',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleEdit = (id: string, currentText: string) => {
+    setEditingId(id);
+    setEditingText(currentText);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditingText('');
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    if (!editingText.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('questions')
+        .update({ question: editingText.trim() })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Modifiée',
+        description: 'Question mise à jour',
+      });
+      
+      setEditingId(null);
+      setEditingText('');
       refetch();
     } catch (error: any) {
       toast({
@@ -186,16 +227,64 @@ const Questions = () => {
                         {levelLabels[q.level]?.split(' - ')[0] || `Niveau ${q.level}`}
                       </span>
                     </TableCell>
-                    <TableCell className="text-rose-700">{q.question}</TableCell>
+                    <TableCell className="text-rose-700">
+                      {editingId === q.id ? (
+                        <Input
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          className="border-rose-300"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveEdit(q.id);
+                            if (e.key === 'Escape') handleCancelEdit();
+                          }}
+                        />
+                      ) : (
+                        q.question
+                      )}
+                    </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(q.id)}
-                        className="text-rose-400 hover:text-rose-600 hover:bg-rose-100"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        {editingId === q.id ? (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleSaveEdit(q.id)}
+                              className="text-green-500 hover:text-green-700 hover:bg-green-100"
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={handleCancelEdit}
+                              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(q.id, q.question)}
+                              className="text-rose-400 hover:text-rose-600 hover:bg-rose-100"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(q.id)}
+                              className="text-rose-400 hover:text-rose-600 hover:bg-rose-100"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
