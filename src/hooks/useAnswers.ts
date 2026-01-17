@@ -16,7 +16,10 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
   const [loading, setLoading] = useState(false);
 
   const fetchAnswers = useCallback(async () => {
-    if (!sessionId || !questionId) return;
+    if (!sessionId || !questionId) {
+      setAnswers([]);
+      return;
+    }
 
     setLoading(true);
     const { data, error } = await supabase
@@ -33,19 +36,26 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
     setLoading(false);
   }, [sessionId, questionId]);
 
-  // Polling toutes les 5 secondes
+  // Reset answers quand la question change
   useEffect(() => {
+    setAnswers([]);
     fetchAnswers();
-    const interval = setInterval(fetchAnswers, 5000);
+  }, [questionId]);
+
+  // Polling toutes les 3 secondes pour synchronisation
+  useEffect(() => {
+    if (!sessionId || !questionId) return;
+    
+    const interval = setInterval(fetchAnswers, 3000);
     return () => clearInterval(interval);
-  }, [fetchAnswers]);
+  }, [fetchAnswers, sessionId, questionId]);
 
   // Écouter les nouvelles réponses en temps réel
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || !questionId) return;
 
     const channel = supabase
-      .channel(`answers-${sessionId}`)
+      .channel(`answers-${sessionId}-${questionId}`)
       .on(
         'postgres_changes',
         {
@@ -55,7 +65,15 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
           filter: `session_id=eq.${sessionId}`
         },
         (payload) => {
-          setAnswers(prev => [...prev, payload.new as Answer]);
+          const newAnswer = payload.new as Answer;
+          // Ne pas ajouter si la réponse n'est pas pour la question actuelle
+          if (newAnswer.question_id === questionId) {
+            setAnswers(prev => {
+              // Éviter les doublons
+              if (prev.some(a => a.id === newAnswer.id)) return prev;
+              return [...prev, newAnswer];
+            });
+          }
         }
       )
       .subscribe();
@@ -63,7 +81,7 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sessionId]);
+  }, [sessionId, questionId]);
 
   const submitAnswer = async (
     playerName: string,
@@ -71,6 +89,13 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
     skipped: boolean = false
   ) => {
     if (!sessionId || !questionId) return;
+
+    // Vérifier si le joueur a déjà répondu à cette question
+    const existingAnswer = answers.find(a => a.player_name === playerName);
+    if (existingAnswer) {
+      console.log('Player already answered this question');
+      return;
+    }
 
     const { error } = await supabase
       .from('answers')
@@ -83,6 +108,9 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
       });
 
     if (error) throw error;
+    
+    // Refetch immédiatement après l'insertion
+    await fetchAnswers();
   };
 
   const getPlayerAnswer = (playerName: string) => {

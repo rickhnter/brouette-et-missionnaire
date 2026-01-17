@@ -87,16 +87,31 @@ const Index = () => {
     }
   }, [session, gameState, playerName, startGame]);
 
+  // Réinitialiser l'état quand la question change
+  const [lastQuestionId, setLastQuestionId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (session?.current_question_id && session.current_question_id !== lastQuestionId) {
+      setLastQuestionId(session.current_question_id);
+      // Quand la question change via la session (sync avec l'autre joueur), repasser en mode question
+      if (gameState === 'reveal' || gameState === 'waiting-partner') {
+        setGameState('question');
+      }
+    }
+  }, [session?.current_question_id, lastQuestionId, gameState]);
+
   useEffect(() => {
     if (!session?.current_question_id || !playerName) return;
 
     const playerAnswered = hasPlayerAnswered(playerName);
     const partnerAnswered = hasPartnerAnswered(playerName);
 
+    // Seulement changer d'état si on est en mode question
     if (gameState === 'question' && playerAnswered && !partnerAnswered) {
       setGameState('waiting-partner');
     }
 
+    // Les deux ont répondu : passer à la révélation
     if ((gameState === 'waiting-partner' || gameState === 'question') && playerAnswered && partnerAnswered) {
       setGameState('reveal');
     }
