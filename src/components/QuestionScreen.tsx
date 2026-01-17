@@ -66,26 +66,23 @@ export const QuestionScreen = ({
         <Card className="w-full max-w-lg bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
           <CardHeader className="text-center space-y-4">
             <LevelIcons level={question.level} />
-            <CardTitle className="text-sm font-medium text-rose-500 uppercase tracking-wide">
-              Niveau {question.level}
-            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <p className="text-xl text-center text-rose-800 font-serif leading-relaxed">
               {question.question}
             </p>
             
-            <div className="flex flex-col gap-3 pt-4">
+            <div className="flex gap-3 pt-4">
               <Button
                 onClick={() => setShowAnswerForm(true)}
-                className="w-full h-14 text-lg bg-gradient-to-r from-rose-400 to-pink-500 hover:from-rose-500 hover:to-pink-600"
+                className="flex-1 h-14 text-lg bg-gradient-to-r from-rose-400 to-pink-500 hover:from-rose-500 hover:to-pink-600"
               >
                 Je réponds
               </Button>
               <Button
                 variant="ghost"
                 onClick={onSkip}
-                className="w-full text-rose-400 hover:text-rose-600 hover:bg-rose-50"
+                className="h-14 px-6 text-2xl bg-rose-50 text-rose-400 hover:text-rose-600 hover:bg-rose-100"
               >
                 🫣
               </Button>
