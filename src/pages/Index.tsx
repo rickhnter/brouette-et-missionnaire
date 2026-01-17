@@ -42,12 +42,14 @@ const Index = () => {
   const { session, loading, findOrCreateSession, startGame, updateSession } = useGameSession(playerName);
   const { getQuestionById, getNextQuestion, loading: questionsLoading } = useQuestions();
   const { 
+    answers,
     submitAnswer, 
-    hasPlayerAnswered, 
-    hasPartnerAnswered, 
     getPlayerAnswer, 
     getPartnerAnswer 
   } = useAnswers(session?.id || null, session?.current_question_id || null);
+
+  const playerAnswered = playerName ? answers.some(a => a.player_name === playerName) : false;
+  const partnerAnswered = playerName ? answers.some(a => a.player_name !== playerName) : false;
 
   const currentQuestion = session?.current_question_id 
     ? getQuestionById(session.current_question_id) 
@@ -103,9 +105,6 @@ const Index = () => {
   useEffect(() => {
     if (!session?.current_question_id || !playerName) return;
 
-    const playerAnswered = hasPlayerAnswered(playerName);
-    const partnerAnswered = hasPartnerAnswered(playerName);
-
     // Seulement changer d'état si on est en mode question
     if (gameState === 'question' && playerAnswered && !partnerAnswered) {
       setGameState('waiting-partner');
@@ -115,7 +114,7 @@ const Index = () => {
     if ((gameState === 'waiting-partner' || gameState === 'question') && playerAnswered && partnerAnswered) {
       setGameState('reveal');
     }
-  }, [hasPlayerAnswered, hasPartnerAnswered, playerName, session?.current_question_id, gameState]);
+  }, [playerAnswered, partnerAnswered, playerName, session?.current_question_id, gameState]);
 
   const handleAnswer = async (answer: string) => {
     if (!playerName) return;
