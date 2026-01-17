@@ -47,12 +47,30 @@ export const useQuestions = () => {
     return questions.find(q => q.id === id);
   };
 
-  const getNextQuestion = (level: number, currentQuestionId: string | null) => {
-    const levelQuestions = getQuestionsByLevel(level);
-    if (!currentQuestionId) return levelQuestions[0] || null;
+  const getNextQuestion = (currentLevel: number, currentQuestionId: string | null): { question: Question; level: number } | null => {
+    const levelQuestions = getQuestionsByLevel(currentLevel);
+    
+    if (!currentQuestionId) {
+      const firstQ = levelQuestions[0];
+      return firstQ ? { question: firstQ, level: currentLevel } : null;
+    }
     
     const currentIndex = levelQuestions.findIndex(q => q.id === currentQuestionId);
-    return levelQuestions[currentIndex + 1] || null;
+    const nextInLevel = levelQuestions[currentIndex + 1];
+    
+    if (nextInLevel) {
+      return { question: nextInLevel, level: currentLevel };
+    }
+    
+    // Passer au niveau suivant
+    for (let nextLevel = currentLevel + 1; nextLevel <= 5; nextLevel++) {
+      const nextLevelQuestions = getQuestionsByLevel(nextLevel);
+      if (nextLevelQuestions.length > 0) {
+        return { question: nextLevelQuestions[0], level: nextLevel };
+      }
+    }
+    
+    return null; // Plus de questions
   };
 
   const refetch = async () => {

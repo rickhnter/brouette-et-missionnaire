@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LoginScreen } from '@/components/LoginScreen';
 import { WaitingRoom } from '@/components/WaitingRoom';
-import { LevelSelection } from '@/components/LevelSelection';
 import { QuestionScreen } from '@/components/QuestionScreen';
 import { WaitingForPartner } from '@/components/WaitingForPartner';
 import { RevealAnswers } from '@/components/RevealAnswers';
@@ -16,7 +15,6 @@ import { useAnswers } from '@/hooks/useAnswers';
 type GameState = 
   | 'login'
   | 'waiting'
-  | 'level-selection'
   | 'question'
   | 'waiting-partner'
   | 'reveal'
@@ -41,8 +39,8 @@ const Index = () => {
   });
   const [previousState, setPreviousState] = useState<GameState>('login');
 
-  const { session, loading, findOrCreateSession, selectLevel, updateSession } = useGameSession(playerName);
-  const { levels, getQuestionById, getNextQuestion, loading: questionsLoading } = useQuestions();
+  const { session, loading, findOrCreateSession, startGame, updateSession } = useGameSession(playerName);
+  const { getQuestionById, getNextQuestion, loading: questionsLoading } = useQuestions();
   const { 
     submitAnswer, 
     hasPlayerAnswered, 
@@ -76,18 +74,18 @@ const Index = () => {
       setGameState('waiting');
     }
 
+    // Quand les deux joueurs sont connectés, démarrer automatiquement
     if (session.player1_connected && session.player2_connected) {
-      if (gameState === 'waiting') {
-        setGameState('level-selection');
+      if (gameState === 'waiting' && !session.current_question_id) {
+        startGame();
       }
     }
 
-    if (session.current_level && session.current_question_id) {
-      if (gameState === 'level-selection') {
-        setGameState('question');
-      }
+    // Si une question est déjà sélectionnée, passer à l'écran de question
+    if (session.current_question_id && gameState === 'waiting') {
+      setGameState('question');
     }
-  }, [session, gameState, playerName]);
+  }, [session, gameState, playerName, startGame]);
 
   useEffect(() => {
     if (!session?.current_question_id || !playerName) return;
@@ -104,11 +102,6 @@ const Index = () => {
     }
   }, [hasPlayerAnswered, hasPartnerAnswered, playerName, session?.current_question_id, gameState]);
 
-  const handleSelectLevel = async (level: number) => {
-    await selectLevel(level);
-    setGameState('question');
-  };
-
   const handleAnswer = async (answer: string) => {
     if (!playerName) return;
     await submitAnswer(playerName, answer, false);
@@ -122,10 +115,13 @@ const Index = () => {
   const handleNextQuestion = async () => {
     if (!session?.current_level || !session?.current_question_id) return;
 
-    const nextQuestion = getNextQuestion(session.current_level, session.current_question_id);
+    const next = getNextQuestion(session.current_level, session.current_question_id);
     
-    if (nextQuestion) {
-      await updateSession({ current_question_id: nextQuestion.id });
+    if (next) {
+      await updateSession({ 
+        current_question_id: next.question.id,
+        current_level: next.level 
+      });
       setGameState('question');
     } else {
       setGameState('end');
@@ -147,8 +143,9 @@ const Index = () => {
     setSearchParams({});
   };
 
-  const handlePlayAgain = () => {
-    setGameState('level-selection');
+  const handlePlayAgain = async () => {
+    await startGame();
+    setGameState('question');
   };
 
   if (gameState === 'login') {
@@ -192,23 +189,6 @@ const Index = () => {
     );
   }
 
-  if (gameState === 'level-selection') {
-    return (
-      <>
-        <GameNavigation 
-          playerName={playerName!} 
-          onShowHistory={handleShowHistory} 
-          onLogout={handleLogout} 
-        />
-        <LevelSelection
-          levels={levels}
-          onSelectLevel={handleSelectLevel}
-          playerName={playerName!}
-          partnerName={partnerName!}
-        />
-      </>
-    );
-  }
 
   if (gameState === 'question' && currentQuestion) {
     return (
