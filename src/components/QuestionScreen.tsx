@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Send } from 'lucide-react';
+import levelIcon from '@/assets/level-icon.jpg';
 
 interface Question {
   id: string;
@@ -18,12 +19,19 @@ interface QuestionScreenProps {
   onSkip: () => void;
 }
 
-const levelIcons: Record<number, string> = {
-  1: '💕',
-  2: '💖',
-  3: '🔥',
-  4: '💋',
-  5: '🌶️',
+const LevelIcons = ({ level }: { level: number }) => {
+  return (
+    <div className="flex items-center justify-center gap-1">
+      {Array.from({ length: level }).map((_, index) => (
+        <img 
+          key={index} 
+          src={levelIcon} 
+          alt="18+" 
+          className="w-8 h-8 object-contain"
+        />
+      ))}
+    </div>
+  );
 };
 
 export const QuestionScreen = ({
@@ -57,7 +65,7 @@ export const QuestionScreen = ({
       <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4">
         <Card className="w-full max-w-lg bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
           <CardHeader className="text-center space-y-4">
-            <div className="text-4xl">{levelIcons[question.level] || '💕'}</div>
+            <LevelIcons level={question.level} />
             <CardTitle className="text-sm font-medium text-rose-500 uppercase tracking-wide">
               Niveau {question.level}
             </CardTitle>
