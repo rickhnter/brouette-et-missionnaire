@@ -19,6 +19,7 @@ export const useQuestions = () => {
       const { data, error } = await supabase
         .from('questions')
         .select('*')
+        .order('level', { ascending: true })
         .order('sort_order', { ascending: true });
 
       if (error) {
@@ -77,6 +78,7 @@ export const useQuestions = () => {
     const { data, error } = await supabase
       .from('questions')
       .select('*')
+      .order('level', { ascending: true })
       .order('sort_order', { ascending: true });
 
     if (error) {
