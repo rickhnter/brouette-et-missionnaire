@@ -115,21 +115,21 @@ export const useGameSession = (playerName: string | null) => {
     if (error) throw error;
   };
 
-  const selectLevel = async (level: number) => {
+  const startGame = async () => {
     if (!session?.id) return;
 
-    // Récupérer la première question du niveau
+    // Récupérer la première question du niveau 1
     const { data: questions, error: questionsError } = await supabase
       .from('questions')
       .select('id')
-      .eq('level', level)
+      .eq('level', 1)
       .order('sort_order', { ascending: true })
       .limit(1);
 
     if (questionsError) throw questionsError;
 
     await updateSession({
-      current_level: level,
+      current_level: 1,
       current_question_id: questions?.[0]?.id || null,
       status: 'playing'
     });
@@ -141,6 +141,6 @@ export const useGameSession = (playerName: string | null) => {
     error,
     findOrCreateSession,
     updateSession,
-    selectLevel
+    startGame
   };
 };
