@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LoginScreen } from '@/components/LoginScreen';
 import { WaitingRoom } from '@/components/WaitingRoom';
-import { CategorySelection } from '@/components/CategorySelection';
+import { LevelSelection } from '@/components/LevelSelection';
 import { QuestionScreen } from '@/components/QuestionScreen';
 import { WaitingForPartner } from '@/components/WaitingForPartner';
 import { RevealAnswers } from '@/components/RevealAnswers';
@@ -12,12 +12,11 @@ import { EndScreen } from '@/components/EndScreen';
 import { useGameSession } from '@/hooks/useGameSession';
 import { useQuestions } from '@/hooks/useQuestions';
 import { useAnswers } from '@/hooks/useAnswers';
-import { supabase } from '@/integrations/supabase/client';
 
 type GameState = 
   | 'login'
   | 'waiting'
-  | 'category-selection'
+  | 'level-selection'
   | 'question'
   | 'waiting-partner'
   | 'reveal'
@@ -29,7 +28,6 @@ const Index = () => {
   const playerFromUrl = searchParams.get('player');
   
   const [playerName, setPlayerName] = useState<string | null>(() => {
-    // Auto-login si le joueur est dans l'URL
     if (playerFromUrl === 'Pierrick' || playerFromUrl === 'Daisy') {
       return playerFromUrl;
     }
@@ -43,8 +41,8 @@ const Index = () => {
   });
   const [previousState, setPreviousState] = useState<GameState>('login');
 
-  const { session, loading, findOrCreateSession, selectCategory, updateSession } = useGameSession(playerName);
-  const { categories, getQuestionById, getNextQuestion, loading: questionsLoading } = useQuestions();
+  const { session, loading, findOrCreateSession, selectLevel, updateSession } = useGameSession(playerName);
+  const { levels, getQuestionById, getNextQuestion, loading: questionsLoading } = useQuestions();
   const { 
     submitAnswer, 
     hasPlayerAnswered, 
@@ -61,19 +59,16 @@ const Index = () => {
     ? session?.player2_name 
     : session?.player1_name;
 
-  // Gérer la connexion
   const handleLogin = (name: string) => {
     setPlayerName(name);
   };
 
-  // Trouver ou créer une session après login
   useEffect(() => {
     if (playerName && !session) {
       findOrCreateSession();
     }
   }, [playerName, session, findOrCreateSession]);
 
-  // Gérer les transitions d'état basées sur la session
   useEffect(() => {
     if (!session) return;
 
@@ -81,22 +76,19 @@ const Index = () => {
       setGameState('waiting');
     }
 
-    // Les deux joueurs sont connectés
     if (session.player1_connected && session.player2_connected) {
       if (gameState === 'waiting') {
-        setGameState('category-selection');
+        setGameState('level-selection');
       }
     }
 
-    // Une catégorie a été sélectionnée
-    if (session.current_category && session.current_question_id) {
-      if (gameState === 'category-selection') {
+    if (session.current_level && session.current_question_id) {
+      if (gameState === 'level-selection') {
         setGameState('question');
       }
     }
   }, [session, gameState, playerName]);
 
-  // Gérer la logique de révélation des réponses
   useEffect(() => {
     if (!session?.current_question_id || !playerName) return;
 
@@ -112,8 +104,8 @@ const Index = () => {
     }
   }, [hasPlayerAnswered, hasPartnerAnswered, playerName, session?.current_question_id, gameState]);
 
-  const handleSelectCategory = async (category: string) => {
-    await selectCategory(category);
+  const handleSelectLevel = async (level: number) => {
+    await selectLevel(level);
     setGameState('question');
   };
 
@@ -128,9 +120,9 @@ const Index = () => {
   };
 
   const handleNextQuestion = async () => {
-    if (!session?.current_category || !session?.current_question_id) return;
+    if (!session?.current_level || !session?.current_question_id) return;
 
-    const nextQuestion = getNextQuestion(session.current_category, session.current_question_id);
+    const nextQuestion = getNextQuestion(session.current_level, session.current_question_id);
     
     if (nextQuestion) {
       await updateSession({ current_question_id: nextQuestion.id });
@@ -156,10 +148,9 @@ const Index = () => {
   };
 
   const handlePlayAgain = () => {
-    setGameState('category-selection');
+    setGameState('level-selection');
   };
 
-  // Rendu conditionnel basé sur l'état du jeu
   if (gameState === 'login') {
     return <LoginScreen onLogin={handleLogin} />;
   }
@@ -201,7 +192,7 @@ const Index = () => {
     );
   }
 
-  if (gameState === 'category-selection') {
+  if (gameState === 'level-selection') {
     return (
       <>
         <GameNavigation 
@@ -209,9 +200,9 @@ const Index = () => {
           onShowHistory={handleShowHistory} 
           onLogout={handleLogout} 
         />
-        <CategorySelection
-          categories={categories}
-          onSelectCategory={handleSelectCategory}
+        <LevelSelection
+          levels={levels}
+          onSelectLevel={handleSelectLevel}
           playerName={playerName!}
           partnerName={partnerName!}
         />

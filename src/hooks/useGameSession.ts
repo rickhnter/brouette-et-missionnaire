@@ -7,7 +7,7 @@ interface GameSession {
   player2_name: string | null;
   player1_connected: boolean;
   player2_connected: boolean;
-  current_category: string | null;
+  current_level: number | null;
   current_question_id: string | null;
   status: string;
 }
@@ -115,21 +115,21 @@ export const useGameSession = (playerName: string | null) => {
     if (error) throw error;
   };
 
-  const selectCategory = async (category: string) => {
+  const selectLevel = async (level: number) => {
     if (!session?.id) return;
 
-    // Récupérer la première question de la catégorie
+    // Récupérer la première question du niveau
     const { data: questions, error: questionsError } = await supabase
       .from('questions')
       .select('id')
-      .eq('category', category)
+      .eq('level', level)
       .order('sort_order', { ascending: true })
       .limit(1);
 
     if (questionsError) throw questionsError;
 
     await updateSession({
-      current_category: category,
+      current_level: level,
       current_question_id: questions?.[0]?.id || null,
       status: 'playing'
     });
@@ -141,6 +141,6 @@ export const useGameSession = (playerName: string | null) => {
     error,
     findOrCreateSession,
     updateSession,
-    selectCategory
+    selectLevel
   };
 };

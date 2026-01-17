@@ -62,7 +62,7 @@ export type Database = {
       game_sessions: {
         Row: {
           created_at: string
-          current_category: string | null
+          current_level: number | null
           current_question_id: string | null
           id: string
           player1_connected: boolean | null
@@ -74,7 +74,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          current_category?: string | null
+          current_level?: number | null
           current_question_id?: string | null
           id?: string
           player1_connected?: boolean | null
@@ -86,7 +86,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          current_category?: string | null
+          current_level?: number | null
           current_question_id?: string | null
           id?: string
           player1_connected?: boolean | null
@@ -108,28 +108,25 @@ export type Database = {
       }
       questions: {
         Row: {
-          category: string
-          category_icon: string
           created_at: string
           id: string
+          level: number
           question: string
           sort_order: number | null
           suggestions: string[] | null
         }
         Insert: {
-          category: string
-          category_icon?: string
           created_at?: string
           id?: string
+          level?: number
           question: string
           sort_order?: number | null
           suggestions?: string[] | null
         }
         Update: {
-          category?: string
-          category_icon?: string
           created_at?: string
           id?: string
+          level?: number
           question?: string
           sort_order?: number | null
           suggestions?: string[] | null
