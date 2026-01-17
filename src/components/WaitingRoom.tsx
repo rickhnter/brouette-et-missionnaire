@@ -55,6 +55,15 @@ export const WaitingRoom = ({ playerName, partnerName }: WaitingRoomProps) => {
               En attente de {partner}...
             </span>
           </div>
+
+          <div className="text-sm text-rose-500 italic">
+            L'aventure commence quand vous serez tous les deux connectés
+          </div>
+          <div className="pt-2">
+            <div className="w-full h-2 bg-rose-100 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-rose-400 to-pink-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+            </div>
+          </div>
           
           <div className="bg-rose-50 rounded-lg p-4 space-y-3">
             <p className="text-sm text-rose-600">
@@ -74,15 +83,6 @@ export const WaitingRoom = ({ playerName, partnerName }: WaitingRoomProps) => {
               >
                 {copied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
               </Button>
-            </div>
-          </div>
-
-          <div className="text-sm text-rose-500 italic">
-            L'aventure commence quand vous serez tous les deux connectés
-          </div>
-          <div className="pt-2">
-            <div className="w-full h-2 bg-rose-100 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-rose-400 to-pink-500 rounded-full animate-pulse" style={{ width: '60%' }} />
             </div>
           </div>
         </CardContent>
