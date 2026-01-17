@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useHistory } from '@/hooks/useHistory';
+import levelIcon from '@/assets/level-icon.jpg';
 
 interface HistoryScreenProps {
   sessionId: string;
@@ -42,9 +43,10 @@ export const HistoryScreen = ({ sessionId, onBack }: HistoryScreenProps) => {
           history.map((entry, index) => (
             <Card key={entry.id} className="bg-white/80 backdrop-blur-sm border-rose-200 shadow-lg">
               <CardHeader className="pb-2">
-                <div className="flex items-center gap-2 text-sm text-rose-500">
-                  <span>{entry.category_icon}</span>
-                  <span>{entry.category}</span>
+                <div className="flex items-center gap-1 mb-2">
+                  {Array.from({ length: entry.level }).map((_, i) => (
+                    <img key={i} src={levelIcon} alt="" className="w-6 h-6 object-contain" />
+                  ))}
                 </div>
                 <CardTitle className="text-lg font-serif text-rose-800">
                   {entry.question}

@@ -4,8 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface HistoryEntry {
   id: string;
   question: string;
-  category: string;
-  category_icon: string;
+  level: number;
   player1_answer: string | null;
   player2_answer: string | null;
   player1_name: string;
@@ -30,8 +29,7 @@ export const useHistory = (sessionId: string | null) => {
           *,
           questions:question_id (
             question,
-            category,
-            category_icon
+            level
           ),
           game_sessions:session_id (
             player1_name,
@@ -59,8 +57,7 @@ export const useHistory = (sessionId: string | null) => {
           grouped.set(questionId, {
             id: questionId,
             question: question?.question || '',
-            category: question?.category || '',
-            category_icon: question?.category_icon || '',
+            level: question?.level || 1,
             player1_answer: null,
             player2_answer: null,
             player1_name: session?.player1_name || '',
