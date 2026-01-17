@@ -97,20 +97,31 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
       return;
     }
 
-    const { error } = await supabase
-      .from('answers')
-      .insert({
-        session_id: sessionId,
-        question_id: questionId,
-        player_name: playerName,
-        answer,
-        skipped
-      });
+    try {
+      const { error } = await supabase
+        .from('answers')
+        .insert({
+          session_id: sessionId,
+          question_id: questionId,
+          player_name: playerName,
+          answer,
+          skipped
+        });
 
-    if (error) throw error;
-    
-    // Refetch immédiatement après l'insertion
-    await fetchAnswers();
+      if (error) {
+        // Si c'est une erreur de doublon, ignorer silencieusement
+        if (error.code === '23505') {
+          console.log('Answer already exists (constraint violation)');
+          return;
+        }
+        throw error;
+      }
+      
+      // Refetch immédiatement après l'insertion
+      await fetchAnswers();
+    } catch (err) {
+      console.error('Error submitting answer:', err);
+    }
   };
 
   const getPlayerAnswer = (playerName: string) => {
