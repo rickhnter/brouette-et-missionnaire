@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Heart } from "lucide-react";
+import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
+import logo from "@/assets/logo.png";
 
 interface LoginScreenProps {
   onLogin: (name: string) => void;
@@ -20,10 +20,11 @@ export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
     <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-rose-400 to-pink-500 rounded-full flex items-center justify-center">
-            <Heart className="w-8 h-8 text-white fill-white" />
-          </div>
-          <CardTitle className="text-2xl font-serif text-rose-800">Brouette & Missionnaire</CardTitle>
+          <img 
+            src={logo} 
+            alt="Brouette & Missionnaire" 
+            className="mx-auto w-64 h-auto"
+          />
           <CardDescription className="text-rose-600">Découvrez-vous à travers des questions intimes</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
