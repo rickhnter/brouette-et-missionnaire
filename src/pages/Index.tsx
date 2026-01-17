@@ -40,7 +40,7 @@ const Index = () => {
   const [previousState, setPreviousState] = useState<GameState>('login');
 
   const { session, loading, findOrCreateSession, startGame, updateSession } = useGameSession(playerName);
-  const { getQuestionById, getNextQuestion, loading: questionsLoading } = useQuestions();
+  const { questions, getQuestionById, getNextQuestion, loading: questionsLoading } = useQuestions();
   const { 
     answers,
     submitAnswer, 
@@ -222,6 +222,8 @@ const Index = () => {
         <QuestionScreen
           question={currentQuestion}
           playerName={playerName!}
+          currentIndex={questions.findIndex(q => q.id === currentQuestion.id) + 1}
+          totalQuestions={questions.length}
           onAnswer={handleAnswer}
           onSkip={handleSkip}
         />
