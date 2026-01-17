@@ -37,16 +37,18 @@ export const RevealAnswers = ({
             <div className="p-4 bg-gradient-to-br from-rose-50 to-pink-50 rounded-xl border border-rose-200">
               <p className="text-sm font-medium text-rose-600 mb-2">{playerName}</p>
               {playerSkipped ? (
-                <p className="text-rose-400 italic">🫣 A préféré passer</p>
+                <p className="text-rose-400 italic">🫣 Tu as passé cette question</p>
               ) : (
                 <p className="text-rose-800 font-medium">{playerAnswer}</p>
               )}
             </div>
 
-            {/* Réponse du partenaire */}
+            {/* Réponse du partenaire - masquée si le joueur a skip */}
             <div className="p-4 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl border border-pink-200">
               <p className="text-sm font-medium text-pink-600 mb-2">{partnerName}</p>
-              {partnerSkipped ? (
+              {playerSkipped ? (
+                <p className="text-pink-400 italic">🔒 Tu n'as pas répondu, sa réponse reste secrète...</p>
+              ) : partnerSkipped ? (
                 <p className="text-pink-400 italic">🫣 A préféré passer</p>
               ) : (
                 <p className="text-pink-800 font-medium">{partnerAnswer}</p>
