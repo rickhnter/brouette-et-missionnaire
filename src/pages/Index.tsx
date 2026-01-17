@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { LoginScreen } from '@/components/LoginScreen';
 import { WaitingRoom } from '@/components/WaitingRoom';
 import { CategorySelection } from '@/components/CategorySelection';
@@ -24,8 +25,22 @@ type GameState =
   | 'end';
 
 const Index = () => {
-  const [playerName, setPlayerName] = useState<string | null>(null);
-  const [gameState, setGameState] = useState<GameState>('login');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const playerFromUrl = searchParams.get('player');
+  
+  const [playerName, setPlayerName] = useState<string | null>(() => {
+    // Auto-login si le joueur est dans l'URL
+    if (playerFromUrl === 'Pierrick' || playerFromUrl === 'Daisy') {
+      return playerFromUrl;
+    }
+    return null;
+  });
+  const [gameState, setGameState] = useState<GameState>(() => {
+    if (playerFromUrl === 'Pierrick' || playerFromUrl === 'Daisy') {
+      return 'waiting';
+    }
+    return 'login';
+  });
   const [previousState, setPreviousState] = useState<GameState>('login');
 
   const { session, loading, findOrCreateSession, selectCategory, updateSession } = useGameSession(playerName);
@@ -137,6 +152,7 @@ const Index = () => {
   const handleLogout = () => {
     setPlayerName(null);
     setGameState('login');
+    setSearchParams({});
   };
 
   const handlePlayAgain = () => {
