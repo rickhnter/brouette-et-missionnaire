@@ -24,7 +24,6 @@ export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
           <CardDescription className="text-rose-600">Découvrez-vous.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="text-center text-sm text-rose-600 mb-4">Qui êtes-vous ?</div>
           <div className="grid grid-cols-2 gap-4">
             <Button
               variant={selectedPlayer === "Pierrick" ? "default" : "outline"}
