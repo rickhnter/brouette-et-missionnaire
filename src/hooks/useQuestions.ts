@@ -74,7 +74,6 @@ export const useQuestions = () => {
   };
 
   const refetch = async () => {
-    setLoading(true);
     const { data, error } = await supabase
       .from('questions')
       .select('*')
@@ -82,7 +81,6 @@ export const useQuestions = () => {
 
     if (error) {
       console.error('Error fetching questions:', error);
-      setLoading(false);
       return;
     }
 
@@ -91,7 +89,6 @@ export const useQuestions = () => {
       new Set(data?.map(q => q.level) || [])
     ).sort((a, b) => a - b);
     setLevels(uniqueLevels);
-    setLoading(false);
   };
 
   return {
