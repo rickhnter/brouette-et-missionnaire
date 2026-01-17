@@ -4,11 +4,151 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useQuestions } from '@/hooks/useQuestions';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Plus, Pencil, Check, X } from 'lucide-react';
+import { Trash2, Plus, Pencil, Check, X, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+interface Question {
+  id: string;
+  question: string;
+  level: number;
+  sort_order: number | null;
+  suggestions: string[] | null;
+}
+
+interface SortableRowProps {
+  q: Question;
+  index: number;
+  editingId: string | null;
+  editingText: string;
+  setEditingText: (text: string) => void;
+  handleEdit: (id: string, text: string) => void;
+  handleSaveEdit: (id: string) => void;
+  handleCancelEdit: () => void;
+  handleDelete: (id: string) => void;
+  levelLabels: Record<number, string>;
+}
+
+const SortableRow = ({ 
+  q, 
+  index, 
+  editingId, 
+  editingText, 
+  setEditingText,
+  handleEdit, 
+  handleSaveEdit, 
+  handleCancelEdit, 
+  handleDelete,
+  levelLabels 
+}: SortableRowProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: q.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style} className="border-b border-rose-100">
+      <td className="p-3 text-rose-500 w-8">
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-rose-100 rounded">
+          <GripVertical className="w-4 h-4 text-rose-400" />
+        </button>
+      </td>
+      <td className="p-3 text-rose-500 w-12">{index + 1}</td>
+      <td className="p-3 w-32">
+        <span className="text-sm">
+          {levelLabels[q.level]?.split(' - ')[0] || `Niveau ${q.level}`}
+        </span>
+      </td>
+      <td className="p-3 text-rose-700">
+        {editingId === q.id ? (
+          <Input
+            value={editingText}
+            onChange={(e) => setEditingText(e.target.value)}
+            className="border-rose-300"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveEdit(q.id);
+              if (e.key === 'Escape') handleCancelEdit();
+            }}
+          />
+        ) : (
+          q.question
+        )}
+      </td>
+      <td className="p-3 w-24">
+        <div className="flex gap-1">
+          {editingId === q.id ? (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleSaveEdit(q.id)}
+                className="text-green-500 hover:text-green-700 hover:bg-green-100"
+              >
+                <Check className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCancelEdit}
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleEdit(q.id, q.question)}
+                className="text-rose-400 hover:text-rose-600 hover:bg-rose-100"
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDelete(q.id)}
+                className="text-rose-400 hover:text-rose-600 hover:bg-rose-100"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+};
 
 const Questions = () => {
   const { questions, loading, refetch } = useQuestions();
@@ -18,6 +158,13 @@ const Questions = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const handleImport = async () => {
     if (!importText.trim()) {
@@ -78,6 +225,13 @@ const Questions = () => {
 
   const handleDelete = async (id: string) => {
     try {
+      // D'abord, nettoyer les références dans game_sessions
+      await supabase
+        .from('game_sessions')
+        .update({ current_question_id: null })
+        .eq('current_question_id', id);
+
+      // Ensuite, supprimer la question
       const { error } = await supabase
         .from('questions')
         .delete()
@@ -135,6 +289,41 @@ const Questions = () => {
         description: error.message,
         variant: 'destructive'
       });
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = questions.findIndex((q) => q.id === active.id);
+      const newIndex = questions.findIndex((q) => q.id === over.id);
+      
+      const reorderedQuestions = arrayMove(questions, oldIndex, newIndex);
+      
+      // Mettre à jour le sort_order de toutes les questions réordonnées
+      try {
+        const updates = reorderedQuestions.map((q, index) => 
+          supabase
+            .from('questions')
+            .update({ sort_order: index + 1 })
+            .eq('id', q.id)
+        );
+        
+        await Promise.all(updates);
+        refetch();
+        
+        toast({
+          title: 'Réorganisé',
+          description: 'Ordre des questions mis à jour',
+        });
+      } catch (error: any) {
+        toast({
+          title: 'Erreur',
+          description: error.message,
+          variant: 'destructive'
+        });
+      }
     }
   };
 
@@ -207,96 +396,57 @@ const Questions = () => {
             <CardTitle className="text-rose-800">
               Questions ({questions.length})
             </CardTitle>
+            <CardDescription className="text-rose-600">
+              Glissez-déposez pour réorganiser
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">#</TableHead>
-                  <TableHead className="w-32">Niveau</TableHead>
-                  <TableHead>Question</TableHead>
-                  <TableHead className="w-16"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {questions.map((q, index) => (
-                  <TableRow key={q.id}>
-                    <TableCell className="text-rose-500">{index + 1}</TableCell>
-                    <TableCell>
-                      <span className="text-sm">
-                        {levelLabels[q.level]?.split(' - ')[0] || `Niveau ${q.level}`}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-rose-700">
-                      {editingId === q.id ? (
-                        <Input
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          className="border-rose-300"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveEdit(q.id);
-                            if (e.key === 'Escape') handleCancelEdit();
-                          }}
-                        />
-                      ) : (
-                        q.question
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        {editingId === q.id ? (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleSaveEdit(q.id)}
-                              className="text-green-500 hover:text-green-700 hover:bg-green-100"
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={handleCancelEdit}
-                              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit(q.id, q.question)}
-                              className="text-rose-400 hover:text-rose-600 hover:bg-rose-100"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(q.id)}
-                              className="text-rose-400 hover:text-rose-600 hover:bg-rose-100"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {questions.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-rose-400 py-8">
-                      Aucune question. Importez-en ci-dessus.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-rose-200">
+                    <th className="p-3 text-left text-rose-600 font-medium w-8"></th>
+                    <th className="p-3 text-left text-rose-600 font-medium w-12">#</th>
+                    <th className="p-3 text-left text-rose-600 font-medium w-32">Niveau</th>
+                    <th className="p-3 text-left text-rose-600 font-medium">Question</th>
+                    <th className="p-3 text-left text-rose-600 font-medium w-24"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <SortableContext
+                    items={questions.map(q => q.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {questions.map((q, index) => (
+                      <SortableRow
+                        key={q.id}
+                        q={q}
+                        index={index}
+                        editingId={editingId}
+                        editingText={editingText}
+                        setEditingText={setEditingText}
+                        handleEdit={handleEdit}
+                        handleSaveEdit={handleSaveEdit}
+                        handleCancelEdit={handleCancelEdit}
+                        handleDelete={handleDelete}
+                        levelLabels={levelLabels}
+                      />
+                    ))}
+                  </SortableContext>
+                  {questions.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="text-center text-rose-400 py-8">
+                        Aucune question. Importez-en ci-dessus.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </DndContext>
           </CardContent>
         </Card>
       </div>
