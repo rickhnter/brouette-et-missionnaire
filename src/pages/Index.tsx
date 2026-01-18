@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LoginScreen } from '@/components/LoginScreen';
 import { WaitingRoom } from '@/components/WaitingRoom';
@@ -8,9 +8,11 @@ import { RevealAnswers } from '@/components/RevealAnswers';
 import { HistoryScreen } from '@/components/HistoryScreen';
 import { GameNavigation } from '@/components/GameNavigation';
 import { EndScreen } from '@/components/EndScreen';
+import { EventScreen } from '@/components/events/EventScreen';
 import { useGameSession } from '@/hooks/useGameSession';
 import { useQuestions } from '@/hooks/useQuestions';
 import { useAnswers } from '@/hooks/useAnswers';
+import { useGameEvents, GameEvent } from '@/hooks/useGameEvents';
 
 type GameState = 
   | 'login'
@@ -19,7 +21,10 @@ type GameState =
   | 'waiting-partner'
   | 'reveal'
   | 'history'
-  | 'end';
+  | 'end'
+  | 'event'
+  | 'event-waiting'
+  | 'event-reveal';
 
 interface RevealData {
   questionId: string;
@@ -36,6 +41,8 @@ const Index = () => {
   const [gameState, setGameState] = useState<GameState>('login');
   const [previousState, setPreviousState] = useState<GameState>('login');
   const [revealData, setRevealData] = useState<RevealData | null>(null);
+  const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null);
+  const questionIndexRef = useRef(0);
 
   const { session, loading, findOrCreateSession, startGame, updateSession } = useGameSession(playerName);
   const { questions, getQuestionById, getNextQuestion, loading: questionsLoading } = useQuestions();
@@ -45,6 +52,18 @@ const Index = () => {
     getPlayerAnswer, 
     getPartnerAnswer 
   } = useAnswers(session?.id || null, session?.current_question_id || null);
+
+  const {
+    shouldTriggerEvent,
+    getRandomEvent,
+    submitResponse,
+    getPlayerResponse,
+    getPartnerResponse,
+    hasPlayerResponded,
+    hasPartnerResponded,
+    resetResponses,
+    fetchResponses
+  } = useGameEvents(session?.id || null);
 
   const playerAnswered = playerName ? answers.some(a => a.player_name === playerName) : false;
   const partnerAnswered = playerName ? answers.some(a => a.player_name !== playerName) : false;
@@ -147,14 +166,30 @@ const Index = () => {
   const handleNextQuestion = async () => {
     if (!session?.current_level || !session?.current_question_id) return;
 
-    // Vérification de sécurité : les deux doivent avoir répondu
     if (!playerAnswered || !partnerAnswered) {
       console.warn('Les deux joueurs n\'ont pas encore répondu à cette question');
       return;
     }
 
-    // Réinitialiser les données de révélation
     setRevealData(null);
+    questionIndexRef.current += 1;
+
+    // Check if we should trigger an event (~25% chance)
+    if (shouldTriggerEvent(questionIndexRef.current)) {
+      const event = getRandomEvent(session.current_level);
+      if (event) {
+        setCurrentEvent(event);
+        resetResponses();
+        setGameState('event');
+        return;
+      }
+    }
+
+    await proceedToNextQuestion();
+  };
+
+  const proceedToNextQuestion = async () => {
+    if (!session?.current_level || !session?.current_question_id) return;
 
     const next = getNextQuestion(session.current_level, session.current_question_id);
     
@@ -168,6 +203,34 @@ const Index = () => {
       setGameState('end');
     }
   };
+
+  const handleEventSubmit = async (response: string | null) => {
+    if (!currentEvent || !playerName) return;
+    await submitResponse(currentEvent.id, playerName, response, true);
+    
+    if (currentEvent.requires_both) {
+      setGameState('event-waiting');
+      await fetchResponses(currentEvent.id);
+    }
+  };
+
+  const handleEventComplete = async () => {
+    setCurrentEvent(null);
+    resetResponses();
+    await proceedToNextQuestion();
+  };
+
+  // Watch for partner response during events
+  useEffect(() => {
+    if (gameState !== 'event-waiting' || !currentEvent || !playerName) return;
+
+    const playerDone = hasPlayerResponded(currentEvent.id, playerName);
+    const partnerDone = hasPartnerResponded(currentEvent.id, playerName);
+
+    if (playerDone && partnerDone) {
+      setGameState('event-reveal');
+    }
+  }, [gameState, currentEvent, playerName, hasPlayerResponded, hasPartnerResponded]);
 
   const handleShowHistory = () => {
     setPreviousState(gameState);
@@ -261,6 +324,33 @@ const Index = () => {
           onLogout={handleLogout} 
         />
         <WaitingForPartner partnerName={partnerName} />
+      </>
+    );
+  }
+
+  // Event states
+  if ((gameState === 'event' || gameState === 'event-waiting' || gameState === 'event-reveal') && currentEvent && playerName && partnerName) {
+    const playerResp = getPlayerResponse(currentEvent.id, playerName);
+    const partnerResp = getPartnerResponse(currentEvent.id, playerName);
+    
+    return (
+      <>
+        <GameNavigation 
+          playerName={playerName} 
+          onShowHistory={handleShowHistory} 
+          onLogout={handleLogout} 
+        />
+        <EventScreen
+          event={currentEvent}
+          playerName={playerName}
+          partnerName={partnerName}
+          onSubmit={handleEventSubmit}
+          onComplete={handleEventComplete}
+          isWaiting={gameState === 'event-waiting'}
+          playerResponse={playerResp?.response}
+          partnerResponse={partnerResp?.response}
+          showReveal={gameState === 'event-reveal'}
+        />
       </>
     );
   }
