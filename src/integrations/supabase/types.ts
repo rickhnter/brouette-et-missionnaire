@@ -59,9 +59,94 @@ export type Database = {
           },
         ]
       }
+      event_responses: {
+        Row: {
+          completed: boolean
+          created_at: string
+          event_id: string
+          id: string
+          player_name: string
+          response: string | null
+          session_id: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          event_id: string
+          id?: string
+          player_name: string
+          response?: string | null
+          session_id: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          event_id?: string
+          id?: string
+          player_name?: string
+          response?: string | null
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_responses_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "game_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_responses_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "game_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_events: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_private: boolean
+          level: number
+          options: string[] | null
+          requires_both: boolean
+          sort_order: number | null
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          is_private?: boolean
+          level?: number
+          options?: string[] | null
+          requires_both?: boolean
+          sort_order?: number | null
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_private?: boolean
+          level?: number
+          options?: string[] | null
+          requires_both?: boolean
+          sort_order?: number | null
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       game_sessions: {
         Row: {
           created_at: string
+          current_event_id: string | null
           current_level: number | null
           current_question_id: string | null
           id: string
@@ -74,6 +159,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          current_event_id?: string | null
           current_level?: number | null
           current_question_id?: string | null
           id?: string
@@ -86,6 +172,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          current_event_id?: string | null
           current_level?: number | null
           current_question_id?: string | null
           id?: string
@@ -97,6 +184,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "game_sessions_current_event_id_fkey"
+            columns: ["current_event_id"]
+            isOneToOne: false
+            referencedRelation: "game_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "game_sessions_current_question_id_fkey"
             columns: ["current_question_id"]
