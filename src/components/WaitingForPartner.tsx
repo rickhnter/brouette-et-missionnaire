@@ -1,11 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { CardBottomActions } from './CardBottomActions';
 
 interface WaitingForPartnerProps {
   partnerName: string;
+  onShowHistory: () => void;
+  onLogout: () => void;
 }
 
-export const WaitingForPartner = ({ partnerName }: WaitingForPartnerProps) => {
+export const WaitingForPartner = ({ partnerName, onShowHistory, onLogout }: WaitingForPartnerProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
@@ -34,6 +37,8 @@ export const WaitingForPartner = ({ partnerName }: WaitingForPartnerProps) => {
           <p className="text-xs text-rose-400">
             Rafraîchissement automatique toutes les 5 secondes
           </p>
+
+          <CardBottomActions onShowHistory={onShowHistory} onLogout={onLogout} />
         </CardContent>
       </Card>
     </div>

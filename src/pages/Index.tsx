@@ -314,6 +314,8 @@ const Index = () => {
           totalQuestions={questions.length}
           onAnswer={handleAnswer}
           onSkip={handleSkip}
+          onShowHistory={handleShowHistory}
+          onLogout={handleLogout}
         />
       </>
     );
@@ -327,7 +329,11 @@ const Index = () => {
           onShowHistory={handleShowHistory} 
           onLogout={handleLogout} 
         />
-        <WaitingForPartner partnerName={partnerName} />
+        <WaitingForPartner 
+          partnerName={partnerName}
+          onShowHistory={handleShowHistory}
+          onLogout={handleLogout}
+        />
       </>
     );
   }
@@ -399,6 +405,9 @@ const Index = () => {
           playerSkipped={revealData.playerAnswer?.skipped || false}
           partnerSkipped={revealData.partnerAnswer?.skipped || false}
           onNext={handleNextQuestion}
+          currentLevel={session?.current_level || 1}
+          onShowHistory={handleShowHistory}
+          onLogout={handleLogout}
         />
       </>
     );
@@ -417,6 +426,7 @@ const Index = () => {
           partnerName={partnerName!}
           onShowHistory={handleShowHistory}
           onPlayAgain={handlePlayAgain}
+          onLogout={handleLogout}
         />
       </>
     );

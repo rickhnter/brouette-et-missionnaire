@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Send } from 'lucide-react';
+import { ArrowLeft, Send, Lightbulb } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +14,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import levelIcon from '@/assets/level-icon.jpg';
+import { SuggestionModal } from './SuggestionModal';
+import { CardBottomActions } from './CardBottomActions';
 
 interface Question {
   id: string;
@@ -29,6 +31,8 @@ interface QuestionScreenProps {
   totalQuestions: number;
   onAnswer: (answer: string) => void;
   onSkip: () => void;
+  onShowHistory: () => void;
+  onLogout: () => void;
 }
 
 const LevelIcons = ({ level }: { level: number }) => {
@@ -52,13 +56,15 @@ export const QuestionScreen = ({
   currentIndex,
   totalQuestions,
   onAnswer,
-  onSkip
+  onSkip,
+  onShowHistory,
+  onLogout
 }: QuestionScreenProps) => {
   const [showAnswerForm, setShowAnswerForm] = useState(false);
   const [showSkipModal, setShowSkipModal] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [customAnswer, setCustomAnswer] = useState('');
-
+  const [showSuggestionModal, setShowSuggestionModal] = useState(false);
   const handleSubmit = () => {
     const answer = selectedSuggestion || customAnswer.trim();
     if (answer) {
@@ -109,6 +115,16 @@ export const QuestionScreen = ({
                 🫣
               </Button>
             </div>
+
+            <button
+              onClick={() => setShowSuggestionModal(true)}
+              className="flex items-center justify-center gap-1 text-xs text-rose-400 hover:text-rose-600 transition-colors mx-auto mt-2"
+            >
+              <Lightbulb className="w-3 h-3" />
+              Proposer une idée
+            </button>
+
+            <CardBottomActions onShowHistory={onShowHistory} onLogout={onLogout} />
           </CardContent>
         </Card>
 
@@ -133,6 +149,12 @@ export const QuestionScreen = ({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <SuggestionModal
+          isOpen={showSuggestionModal}
+          onClose={() => setShowSuggestionModal(false)}
+          currentLevel={question.level}
+        />
       </div>
     );
   }
@@ -197,8 +219,24 @@ export const QuestionScreen = ({
             <Send className="w-4 h-4 mr-2" />
             Envoyer
           </Button>
+
+          <button
+            onClick={() => setShowSuggestionModal(true)}
+            className="flex items-center justify-center gap-1 text-xs text-rose-400 hover:text-rose-600 transition-colors mx-auto mt-2"
+          >
+            <Lightbulb className="w-3 h-3" />
+            Proposer une idée
+          </button>
+
+          <CardBottomActions onShowHistory={onShowHistory} onLogout={onLogout} />
         </CardContent>
       </Card>
+
+      <SuggestionModal
+        isOpen={showSuggestionModal}
+        onClose={() => setShowSuggestionModal(false)}
+        currentLevel={question.level}
+      />
     </div>
   );
 };
