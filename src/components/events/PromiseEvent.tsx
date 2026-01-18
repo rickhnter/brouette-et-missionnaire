@@ -42,9 +42,9 @@ export const PromiseEvent: React.FC<PromiseEventProps> = ({
   // Reveal state
   if (showReveal) {
     return (
-      <Card className="border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50">
+      <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl text-foreground flex items-center justify-center gap-2">
+          <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
             <span>🤞</span> {event.title}
           </CardTitle>
         </CardHeader>
@@ -55,7 +55,7 @@ export const PromiseEvent: React.FC<PromiseEventProps> = ({
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white/80 rounded-lg p-4 border border-violet-200"
+              className="bg-violet-50/80 rounded-xl p-4 border border-violet-100"
             >
               <p className="text-sm font-medium text-violet-600 mb-1">{playerName} promet :</p>
               <p className="text-foreground italic">"{playerResponse}"</p>
@@ -75,14 +75,17 @@ export const PromiseEvent: React.FC<PromiseEventProps> = ({
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="bg-white/80 rounded-lg p-4 border border-violet-200"
+              className="bg-violet-50/80 rounded-xl p-4 border border-violet-100"
             >
               <p className="text-sm font-medium text-violet-600 mb-1">{partnerName} promet :</p>
               <p className="text-foreground italic">"{partnerResponse}"</p>
             </motion.div>
           </div>
 
-          <Button onClick={onComplete} className="w-full mt-4 bg-violet-500 hover:bg-violet-600">
+          <Button 
+            onClick={onComplete} 
+            className="w-full mt-4 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+          >
             Continuer
           </Button>
         </CardContent>
@@ -93,20 +96,26 @@ export const PromiseEvent: React.FC<PromiseEventProps> = ({
   // Waiting state
   if (isWaiting || hasSubmitted) {
     return (
-      <Card className="border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50">
+      <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl text-foreground flex items-center justify-center gap-2">
+          <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
             <span>🤞</span> {event.title}
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center py-8">
-          <p className="text-muted-foreground mb-4">Ta promesse a été enregistrée !</p>
-          <div className="flex justify-center mb-4">
-            <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            En attente de la promesse de {partnerName}...
-          </p>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="space-y-4"
+          >
+            <p className="text-muted-foreground">Ta promesse a été enregistrée ! 🤞</p>
+            <div className="flex justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              En attente de la promesse de {partnerName}...
+            </p>
+          </motion.div>
         </CardContent>
       </Card>
     );
@@ -114,9 +123,9 @@ export const PromiseEvent: React.FC<PromiseEventProps> = ({
 
   // Input state
   return (
-    <Card className="border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50">
+    <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
       <CardHeader className="text-center pb-2">
-        <CardTitle className="text-xl text-foreground flex items-center justify-center gap-2">
+        <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
           <span>🤞</span> {event.title}
         </CardTitle>
       </CardHeader>
@@ -127,12 +136,12 @@ export const PromiseEvent: React.FC<PromiseEventProps> = ({
           value={promise}
           onChange={(e) => setPromise(e.target.value)}
           placeholder="Je promets de..."
-          className="min-h-[120px] bg-white/80 border-violet-200 focus:border-violet-500"
+          className="min-h-[120px] bg-white/80 border-violet-200 focus:border-violet-400 focus:ring-violet-400"
         />
 
         <Button 
           onClick={handleSubmit} 
-          className="w-full bg-violet-500 hover:bg-violet-600"
+          className="w-full bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
           disabled={!promise.trim()}
         >
           Je promets 🤞

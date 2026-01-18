@@ -149,6 +149,7 @@ export type Database = {
           current_event_id: string | null
           current_level: number | null
           current_question_id: string | null
+          event_player_name: string | null
           id: string
           player1_connected: boolean | null
           player1_name: string
@@ -162,6 +163,7 @@ export type Database = {
           current_event_id?: string | null
           current_level?: number | null
           current_question_id?: string | null
+          event_player_name?: string | null
           id?: string
           player1_connected?: boolean | null
           player1_name: string
@@ -175,6 +177,7 @@ export type Database = {
           current_event_id?: string | null
           current_level?: number | null
           current_question_id?: string | null
+          event_player_name?: string | null
           id?: string
           player1_connected?: boolean | null
           player1_name?: string

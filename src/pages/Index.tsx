@@ -9,6 +9,7 @@ import { HistoryScreen } from '@/components/HistoryScreen';
 import { GameNavigation } from '@/components/GameNavigation';
 import { EndScreen } from '@/components/EndScreen';
 import { EventScreen } from '@/components/events/EventScreen';
+import { PartnerEventNotification } from '@/components/events/PartnerEventNotification';
 import { useGameSession } from '@/hooks/useGameSession';
 import { useQuestions } from '@/hooks/useQuestions';
 import { useAnswers } from '@/hooks/useAnswers';
@@ -24,7 +25,8 @@ type GameState =
   | 'end'
   | 'event'
   | 'event-waiting'
-  | 'event-reveal';
+  | 'event-reveal'
+  | 'partner-event-notification';
 
 interface RevealData {
   questionId: string;
@@ -42,6 +44,8 @@ const Index = () => {
   const [previousState, setPreviousState] = useState<GameState>('login');
   const [revealData, setRevealData] = useState<RevealData | null>(null);
   const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null);
+  const [partnerEvent, setPartnerEvent] = useState<GameEvent | null>(null);
+  const [partnerEventResponse, setPartnerEventResponse] = useState<string | null>(null);
   const questionIndexRef = useRef(0);
 
   const { session, loading, findOrCreateSession, startGame, updateSession } = useGameSession(playerName);
@@ -350,6 +354,29 @@ const Index = () => {
           playerResponse={playerResp?.response}
           partnerResponse={partnerResp?.response}
           showReveal={gameState === 'event-reveal'}
+        />
+      </>
+    );
+  }
+
+  // Partner event notification (when partner had an individual action)
+  if (gameState === 'partner-event-notification' && partnerEvent && partnerName) {
+    return (
+      <>
+        <GameNavigation 
+          playerName={playerName!} 
+          onShowHistory={handleShowHistory} 
+          onLogout={handleLogout} 
+        />
+        <PartnerEventNotification
+          event={partnerEvent}
+          partnerName={partnerName}
+          partnerResponse={partnerEventResponse}
+          onContinue={() => {
+            setPartnerEvent(null);
+            setPartnerEventResponse(null);
+            setGameState('reveal');
+          }}
         />
       </>
     );

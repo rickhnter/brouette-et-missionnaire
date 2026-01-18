@@ -6,6 +6,7 @@ import { PhotoEvent } from './PhotoEvent';
 import { SyncEvent } from './SyncEvent';
 import { GameEventComponent } from './GameEvent';
 import { ConfessionEvent } from './ConfessionEvent';
+import { EventBadge } from './EventBadge';
 import { motion } from 'framer-motion';
 
 interface EventScreenProps {
@@ -20,24 +21,6 @@ interface EventScreenProps {
   showReveal?: boolean;
 }
 
-const eventIcons: Record<string, string> = {
-  message: '💌',
-  promise: '🤞',
-  photo: '📸',
-  sync: '🔗',
-  game: '🎲',
-  confession: '💋'
-};
-
-const eventColors: Record<string, string> = {
-  message: 'from-pink-500 to-rose-500',
-  promise: 'from-violet-500 to-purple-500',
-  photo: 'from-cyan-500 to-blue-500',
-  sync: 'from-blue-500 to-indigo-500',
-  game: 'from-orange-500 to-amber-500',
-  confession: 'from-red-500 to-rose-600'
-};
-
 export const EventScreen: React.FC<EventScreenProps> = ({
   event,
   playerName,
@@ -47,116 +30,55 @@ export const EventScreen: React.FC<EventScreenProps> = ({
   isWaiting = false,
   playerResponse,
   partnerResponse,
-  showReveal = false
+  showReveal = false,
 }) => {
-  const icon = eventIcons[event.type] || '✨';
-  const gradientColor = eventColors[event.type] || 'from-pink-500 to-rose-500';
-
   const renderEventContent = () => {
+    const commonProps = {
+      event,
+      playerName,
+      partnerName,
+      onSubmit,
+      onComplete,
+      isWaiting,
+      playerResponse,
+      partnerResponse,
+      showReveal,
+    };
+
     switch (event.type) {
       case 'message':
-        return (
-          <MessageEvent
-            event={event}
-            playerName={playerName}
-            partnerName={partnerName}
-            onSubmit={onSubmit}
-            isWaiting={isWaiting}
-            playerResponse={playerResponse}
-            partnerResponse={partnerResponse}
-            showReveal={showReveal}
-            onComplete={onComplete}
-          />
-        );
+        return <MessageEvent {...commonProps} />;
       case 'promise':
-        return (
-          <PromiseEvent
-            event={event}
-            playerName={playerName}
-            partnerName={partnerName}
-            onSubmit={onSubmit}
-            isWaiting={isWaiting}
-            playerResponse={playerResponse}
-            partnerResponse={partnerResponse}
-            showReveal={showReveal}
-            onComplete={onComplete}
-          />
-        );
+        return <PromiseEvent {...commonProps} />;
       case 'photo':
-        return (
-          <PhotoEvent
-            event={event}
-            playerName={playerName}
-            onSubmit={onSubmit}
-            onComplete={onComplete}
-          />
-        );
+        return <PhotoEvent {...commonProps} />;
       case 'sync':
-        return (
-          <SyncEvent
-            event={event}
-            playerName={playerName}
-            partnerName={partnerName}
-            onSubmit={onSubmit}
-            isWaiting={isWaiting}
-            playerResponse={playerResponse}
-            partnerResponse={partnerResponse}
-            showReveal={showReveal}
-            onComplete={onComplete}
-          />
-        );
+        return <SyncEvent {...commonProps} />;
       case 'game':
-        return (
-          <GameEventComponent
-            event={event}
-            playerName={playerName}
-            partnerName={partnerName}
-            onSubmit={onSubmit}
-            isWaiting={isWaiting}
-            playerResponse={playerResponse}
-            partnerResponse={partnerResponse}
-            showReveal={showReveal}
-            onComplete={onComplete}
-          />
-        );
+        return <GameEventComponent {...commonProps} />;
       case 'confession':
-        return (
-          <ConfessionEvent
-            event={event}
-            playerName={playerName}
-            partnerName={partnerName}
-            onSubmit={onSubmit}
-            isWaiting={isWaiting}
-            playerResponse={playerResponse}
-            partnerResponse={partnerResponse}
-            showReveal={showReveal}
-            onComplete={onComplete}
-          />
-        );
+        return <ConfessionEvent {...commonProps} />;
       default:
-        return null;
+        return <MessageEvent {...commonProps} />;
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
+    <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex flex-col items-center justify-center p-4">
       <motion.div
-        initial={{ scale: 0, rotate: -10 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 20 }}
         className="w-full max-w-md"
       >
-        {/* Event Type Badge */}
+        {/* Event Badge */}
         <motion.div
-          initial={{ y: -20, opacity: 0 }}
+          initial={{ y: -30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.2, type: 'spring' }}
           className="flex justify-center mb-4"
         >
-          <div className={`bg-gradient-to-r ${gradientColor} text-white px-4 py-2 rounded-full flex items-center gap-2 shadow-lg`}>
-            <span className="text-2xl">{icon}</span>
-            <span className="font-semibold capitalize">{event.type === 'game' ? 'Jeu' : event.type}</span>
-          </div>
+          <EventBadge type={event.type as any} size="lg" />
         </motion.div>
 
         {/* Event Content */}
