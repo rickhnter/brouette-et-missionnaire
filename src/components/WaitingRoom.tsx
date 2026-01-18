@@ -14,7 +14,7 @@ export const WaitingRoom = ({ playerName, partnerName }: WaitingRoomProps) => {
   const { toast } = useToast();
 
   const partner = playerName === "Pierrick" ? "Daisy" : "Pierrick";
-  const shareUrl = `${window.location.origin}/?player=${partner}`;
+  const shareUrl = `https://brouette-ou-missionnaire.lovable.app/?player=${partner}`;
 
   const handleShare = async () => {
     try {
