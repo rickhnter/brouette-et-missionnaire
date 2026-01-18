@@ -21,6 +21,13 @@ type GameState =
   | 'history'
   | 'end';
 
+interface RevealData {
+  questionId: string;
+  questionText: string;
+  playerAnswer: { answer: string | null; skipped: boolean } | null;
+  partnerAnswer: { answer: string | null; skipped: boolean } | null;
+}
+
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const playerFromUrl = searchParams.get('player');
@@ -28,6 +35,7 @@ const Index = () => {
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [gameState, setGameState] = useState<GameState>('login');
   const [previousState, setPreviousState] = useState<GameState>('login');
+  const [revealData, setRevealData] = useState<RevealData | null>(null);
 
   const { session, loading, findOrCreateSession, startGame, updateSession } = useGameSession(playerName);
   const { questions, getQuestionById, getNextQuestion, loading: questionsLoading } = useQuestions();
@@ -107,11 +115,24 @@ const Index = () => {
       setGameState('waiting-partner');
     }
 
-    // Les deux ont répondu : passer à la révélation
+    // Les deux ont répondu : passer à la révélation et capturer les données
     if ((gameState === 'waiting-partner' || gameState === 'question') && playerAnswered && partnerAnswered) {
+      // Capturer les données de révélation avant de changer d'état
+      const playerAns = getPlayerAnswer(playerName);
+      const partnerAns = getPartnerAnswer(playerName);
+      
+      if (currentQuestion) {
+        setRevealData({
+          questionId: currentQuestion.id,
+          questionText: currentQuestion.question,
+          playerAnswer: playerAns ? { answer: playerAns.answer, skipped: playerAns.skipped } : null,
+          partnerAnswer: partnerAns ? { answer: partnerAns.answer, skipped: partnerAns.skipped } : null,
+        });
+      }
+      
       setGameState('reveal');
     }
-  }, [playerAnswered, partnerAnswered, playerName, session?.current_question_id, gameState]);
+  }, [playerAnswered, partnerAnswered, playerName, session?.current_question_id, gameState, currentQuestion, getPlayerAnswer, getPartnerAnswer]);
 
   const handleAnswer = async (answer: string) => {
     if (!playerName) return;
@@ -125,6 +146,15 @@ const Index = () => {
 
   const handleNextQuestion = async () => {
     if (!session?.current_level || !session?.current_question_id) return;
+
+    // Vérification de sécurité : les deux doivent avoir répondu
+    if (!playerAnswered || !partnerAnswered) {
+      console.warn('Les deux joueurs n\'ont pas encore répondu à cette question');
+      return;
+    }
+
+    // Réinitialiser les données de révélation
+    setRevealData(null);
 
     const next = getNextQuestion(session.current_level, session.current_question_id);
     
@@ -235,10 +265,7 @@ const Index = () => {
     );
   }
 
-  if (gameState === 'reveal' && currentQuestion) {
-    const playerAnswer = getPlayerAnswer(playerName!);
-    const partnerAnswer = getPartnerAnswer(playerName!);
-
+  if (gameState === 'reveal' && revealData) {
     return (
       <>
         <GameNavigation 
@@ -247,13 +274,13 @@ const Index = () => {
           onLogout={handleLogout} 
         />
         <RevealAnswers
-          question={currentQuestion.question}
+          question={revealData.questionText}
           playerName={playerName!}
           partnerName={partnerName!}
-          playerAnswer={playerAnswer?.answer || null}
-          partnerAnswer={partnerAnswer?.answer || null}
-          playerSkipped={playerAnswer?.skipped || false}
-          partnerSkipped={partnerAnswer?.skipped || false}
+          playerAnswer={revealData.playerAnswer?.answer || null}
+          partnerAnswer={revealData.partnerAnswer?.answer || null}
+          playerSkipped={revealData.playerAnswer?.skipped || false}
+          partnerSkipped={revealData.partnerAnswer?.skipped || false}
           onNext={handleNextQuestion}
         />
       </>
