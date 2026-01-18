@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Heart, Loader2, Share2, Check } from "lucide-react";
+import { Loader2, Share2, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import logo from "@/assets/logo.png";
 
 interface WaitingRoomProps {
   playerName: string;
@@ -39,7 +38,16 @@ export const WaitingRoom = ({ playerName, partnerName }: WaitingRoomProps) => {
     <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center space-y-4">
-          <img src={logo} alt="Brouette & Missionnaire" className="mx-auto w-48 h-auto" />
+          <div className="py-4">
+            <div className="relative mx-auto w-32 h-32">
+              <div className="absolute inset-0 bg-gradient-to-br from-rose-200 to-pink-200 rounded-full animate-pulse" />
+              <div className="absolute inset-4 bg-gradient-to-br from-rose-300 to-pink-300 rounded-full animate-pulse delay-100" />
+              <div className="absolute inset-8 bg-gradient-to-br from-rose-400 to-pink-400 rounded-full animate-pulse delay-200" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-white animate-spin" />
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6 text-center">
           <div className="flex items-center justify-center gap-3 text-rose-600">
