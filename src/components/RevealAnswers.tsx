@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Lightbulb } from 'lucide-react';
+import { SuggestionModal } from './SuggestionModal';
+import { CardBottomActions } from './CardBottomActions';
 
 interface RevealAnswersProps {
   question: string;
@@ -11,6 +14,9 @@ interface RevealAnswersProps {
   playerSkipped: boolean;
   partnerSkipped: boolean;
   onNext: () => void;
+  currentLevel: number;
+  onShowHistory: () => void;
+  onLogout: () => void;
 }
 
 export const RevealAnswers = ({
@@ -21,8 +27,12 @@ export const RevealAnswers = ({
   partnerAnswer,
   playerSkipped,
   partnerSkipped,
-  onNext
+  onNext,
+  currentLevel,
+  onShowHistory,
+  onLogout
 }: RevealAnswersProps) => {
+  const [showSuggestionModal, setShowSuggestionModal] = useState(false);
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4">
       <Card className="w-full max-w-lg bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
@@ -63,8 +73,24 @@ export const RevealAnswers = ({
             Question suivante
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
+
+          <button
+            onClick={() => setShowSuggestionModal(true)}
+            className="flex items-center justify-center gap-1 text-xs text-rose-400 hover:text-rose-600 transition-colors mx-auto mt-2"
+          >
+            <Lightbulb className="w-3 h-3" />
+            Proposer une idée
+          </button>
+
+          <CardBottomActions onShowHistory={onShowHistory} onLogout={onLogout} />
         </CardContent>
       </Card>
+
+      <SuggestionModal
+        isOpen={showSuggestionModal}
+        onClose={() => setShowSuggestionModal(false)}
+        currentLevel={currentLevel}
+      />
     </div>
   );
 };

@@ -1,19 +1,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Heart, History, RotateCcw } from 'lucide-react';
+import { CardBottomActions } from './CardBottomActions';
 
 interface EndScreenProps {
   playerName: string;
   partnerName: string;
   onShowHistory: () => void;
   onPlayAgain: () => void;
+  onLogout: () => void;
 }
 
 export const EndScreen = ({
   playerName,
   partnerName,
   onShowHistory,
-  onPlayAgain
+  onPlayAgain,
+  onLogout
 }: EndScreenProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4">
@@ -51,6 +54,8 @@ export const EndScreen = ({
               Rejouer
             </Button>
           </div>
+
+          <CardBottomActions onShowHistory={onShowHistory} onLogout={onLogout} />
         </CardContent>
       </Card>
     </div>
