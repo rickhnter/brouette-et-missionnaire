@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useQuestions } from '@/hooks/useQuestions';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Plus, Pencil, Check, X, GripVertical } from 'lucide-react';
+import { Trash2, Plus, Pencil, Check, X, GripVertical, AlertCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DndContext,
   closestCenter,
@@ -45,6 +46,7 @@ interface SortableRowProps {
   handleCancelEdit: () => void;
   handleDelete: (id: string) => void;
   levelLabels: Record<number, string>;
+  isDuplicate: boolean;
 }
 
 const SortableRow = ({ 
@@ -57,7 +59,8 @@ const SortableRow = ({
   handleSaveEdit, 
   handleCancelEdit, 
   handleDelete,
-  levelLabels 
+  levelLabels,
+  isDuplicate
 }: SortableRowProps) => {
   const {
     attributes,
@@ -81,7 +84,21 @@ const SortableRow = ({
           <GripVertical className="w-4 h-4 text-rose-400" />
         </button>
       </td>
-      <td className="p-3 text-rose-500 w-12">{index + 1}</td>
+      <td className="p-3 text-rose-500 w-12 flex items-center gap-1">
+        {isDuplicate && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <AlertCircle className="w-4 h-4 text-amber-500" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Question en double</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        {index + 1}
+      </td>
       <td className="p-3 w-32">
         <span className="text-sm">
           {levelLabels[q.level]?.split(' - ')[0] || `Niveau ${q.level}`}
@@ -421,21 +438,28 @@ const Questions = () => {
                     items={questions.map(q => q.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {questions.map((q, index) => (
-                      <SortableRow
-                        key={q.id}
-                        q={q}
-                        index={index}
-                        editingId={editingId}
-                        editingText={editingText}
-                        setEditingText={setEditingText}
-                        handleEdit={handleEdit}
-                        handleSaveEdit={handleSaveEdit}
-                        handleCancelEdit={handleCancelEdit}
-                        handleDelete={handleDelete}
-                        levelLabels={levelLabels}
-                      />
-                    ))}
+                    {questions.map((q, index) => {
+                      const normalizedText = q.question.trim().toLowerCase();
+                      const isDuplicate = questions.some(
+                        (other) => other.id !== q.id && other.question.trim().toLowerCase() === normalizedText
+                      );
+                      return (
+                        <SortableRow
+                          key={q.id}
+                          q={q}
+                          index={index}
+                          editingId={editingId}
+                          editingText={editingText}
+                          setEditingText={setEditingText}
+                          handleEdit={handleEdit}
+                          handleSaveEdit={handleSaveEdit}
+                          handleCancelEdit={handleCancelEdit}
+                          handleDelete={handleDelete}
+                          levelLabels={levelLabels}
+                          isDuplicate={isDuplicate}
+                        />
+                      );
+                    })}
                   </SortableContext>
                   {questions.length === 0 && (
                     <tr>
