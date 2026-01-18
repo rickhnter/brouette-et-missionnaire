@@ -31,12 +31,7 @@ const Index = () => {
     }
     return null;
   });
-  const [gameState, setGameState] = useState<GameState>(() => {
-    if (playerFromUrl === 'Pierrick' || playerFromUrl === 'Daisy') {
-      return 'waiting';
-    }
-    return 'login';
-  });
+  const [gameState, setGameState] = useState<GameState>('login');
   const [previousState, setPreviousState] = useState<GameState>('login');
 
   const { session, loading, findOrCreateSession, startGame, updateSession } = useGameSession(playerName);
@@ -170,7 +165,7 @@ const Index = () => {
   };
 
   if (gameState === 'login') {
-    return <LoginScreen onLogin={handleLogin} />;
+    return <LoginScreen onLogin={handleLogin} preSelectedPlayer={playerFromUrl} />;
   }
 
   if (loading || questionsLoading) {
