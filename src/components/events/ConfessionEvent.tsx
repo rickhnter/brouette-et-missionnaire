@@ -42,9 +42,9 @@ export const ConfessionEvent: React.FC<ConfessionEventProps> = ({
   // Reveal state
   if (showReveal) {
     return (
-      <Card className="border-red-200 bg-gradient-to-br from-red-50 to-rose-50">
+      <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl text-foreground flex items-center justify-center gap-2">
+          <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
             <span>💋</span> {event.title}
           </CardTitle>
         </CardHeader>
@@ -53,37 +53,39 @@ export const ConfessionEvent: React.FC<ConfessionEventProps> = ({
           
           <div className="space-y-4">
             <motion.div
-              initial={{ rotateY: 90, opacity: 0 }}
-              animate={{ rotateY: 0, opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="bg-white/80 rounded-lg p-4 border border-red-200"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-red-50/80 rounded-xl p-4 border border-red-100"
             >
-              <p className="text-sm font-medium text-red-500 mb-1">{playerName} confesse :</p>
+              <p className="text-sm font-medium text-red-600 mb-1">{playerName} confesse :</p>
               <p className="text-foreground italic">"{playerResponse}"</p>
             </motion.div>
 
             <div className="flex justify-center">
               <motion.div
                 initial={{ scale: 0 }}
-                animate={{ scale: [0, 1.2, 1] }}
-                transition={{ delay: 0.5, duration: 0.5 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, type: 'spring' }}
               >
-                <Heart className="h-8 w-8 text-red-500 fill-red-500" />
+                <Heart className="h-6 w-6 text-red-500 fill-red-500" />
               </motion.div>
             </div>
 
             <motion.div
-              initial={{ rotateY: -90, opacity: 0 }}
-              animate={{ rotateY: 0, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="bg-white/80 rounded-lg p-4 border border-red-200"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="bg-red-50/80 rounded-xl p-4 border border-red-100"
             >
-              <p className="text-sm font-medium text-red-500 mb-1">{partnerName} confesse :</p>
+              <p className="text-sm font-medium text-red-600 mb-1">{partnerName} confesse :</p>
               <p className="text-foreground italic">"{partnerResponse}"</p>
             </motion.div>
           </div>
 
-          <Button onClick={onComplete} className="w-full mt-4 bg-red-500 hover:bg-red-600">
+          <Button 
+            onClick={onComplete} 
+            className="w-full mt-4 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600"
+          >
             Continuer
           </Button>
         </CardContent>
@@ -94,20 +96,26 @@ export const ConfessionEvent: React.FC<ConfessionEventProps> = ({
   // Waiting state
   if (isWaiting || hasSubmitted) {
     return (
-      <Card className="border-red-200 bg-gradient-to-br from-red-50 to-rose-50">
+      <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl text-foreground flex items-center justify-center gap-2">
+          <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
             <span>💋</span> {event.title}
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center py-8">
-          <p className="text-muted-foreground mb-4">Ta confession est enregistrée...</p>
-          <div className="flex justify-center mb-4">
-            <Loader2 className="h-8 w-8 animate-spin text-red-500" />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            En attente de la confession de {partnerName}...
-          </p>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="space-y-4"
+          >
+            <p className="text-muted-foreground">Ta confession a été enregistrée ! 💋</p>
+            <div className="flex justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              En attente de la confession de {partnerName}...
+            </p>
+          </motion.div>
         </CardContent>
       </Card>
     );
@@ -115,9 +123,9 @@ export const ConfessionEvent: React.FC<ConfessionEventProps> = ({
 
   // Input state
   return (
-    <Card className="border-red-200 bg-gradient-to-br from-red-50 to-rose-50">
+    <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
       <CardHeader className="text-center pb-2">
-        <CardTitle className="text-xl text-foreground flex items-center justify-center gap-2">
+        <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
           <span>💋</span> {event.title}
         </CardTitle>
       </CardHeader>
@@ -127,16 +135,16 @@ export const ConfessionEvent: React.FC<ConfessionEventProps> = ({
         <Textarea
           value={confession}
           onChange={(e) => setConfession(e.target.value)}
-          placeholder="Je confesse que..."
-          className="min-h-[120px] bg-white/80 border-red-200 focus:border-red-500"
+          placeholder="Ma confession..."
+          className="min-h-[120px] bg-white/80 border-red-200 focus:border-red-400 focus:ring-red-400"
         />
 
         <Button 
           onClick={handleSubmit} 
-          className="w-full bg-red-500 hover:bg-red-600"
+          className="w-full bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600"
           disabled={!confession.trim()}
         >
-          Avouer 💋
+          Je confesse 💋
         </Button>
       </CardContent>
     </Card>
