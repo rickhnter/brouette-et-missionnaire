@@ -25,12 +25,7 @@ const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const playerFromUrl = searchParams.get('player');
   
-  const [playerName, setPlayerName] = useState<string | null>(() => {
-    if (playerFromUrl === 'Pierrick' || playerFromUrl === 'Daisy') {
-      return playerFromUrl;
-    }
-    return null;
-  });
+  const [playerName, setPlayerName] = useState<string | null>(null);
   const [gameState, setGameState] = useState<GameState>('login');
   const [previousState, setPreviousState] = useState<GameState>('login');
 
@@ -165,7 +160,8 @@ const Index = () => {
   };
 
   if (gameState === 'login') {
-    return <LoginScreen onLogin={handleLogin} preSelectedPlayer={playerFromUrl} />;
+    const validPlayer = playerFromUrl === 'Pierrick' || playerFromUrl === 'Daisy' ? playerFromUrl : null;
+    return <LoginScreen onLogin={handleLogin} preSelectedPlayer={validPlayer} />;
   }
 
   if (loading || questionsLoading) {
