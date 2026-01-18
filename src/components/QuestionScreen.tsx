@@ -3,6 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Send } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import levelIcon from '@/assets/level-icon.jpg';
 
 interface Question {
@@ -45,6 +55,7 @@ export const QuestionScreen = ({
   onSkip
 }: QuestionScreenProps) => {
   const [showAnswerForm, setShowAnswerForm] = useState(false);
+  const [showSkipModal, setShowSkipModal] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [customAnswer, setCustomAnswer] = useState('');
 
@@ -62,6 +73,10 @@ export const QuestionScreen = ({
       setSelectedSuggestion(suggestion);
       setCustomAnswer('');
     }
+  };
+  const handleConfirmSkip = () => {
+    setShowSkipModal(false);
+    onSkip();
   };
 
   if (!showAnswerForm) {
@@ -88,7 +103,7 @@ export const QuestionScreen = ({
               </Button>
               <Button
                 variant="ghost"
-                onClick={onSkip}
+                onClick={() => setShowSkipModal(true)}
                 className="h-14 px-6 text-2xl bg-rose-50 text-rose-400 hover:text-rose-600 hover:bg-rose-100"
               >
                 🫣
@@ -96,6 +111,28 @@ export const QuestionScreen = ({
             </div>
           </CardContent>
         </Card>
+
+        <AlertDialog open={showSkipModal} onOpenChange={setShowSkipModal}>
+          <AlertDialogContent className="border-rose-200">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-rose-800">Passer cette question ?</AlertDialogTitle>
+              <AlertDialogDescription className="text-rose-600">
+                Si vous passez cette question, vous ne pourrez pas voir la réponse de l'autre.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-rose-300 text-rose-700 hover:bg-rose-50">
+                Annuler
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmSkip}
+                className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600"
+              >
+                Passer quand même
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
