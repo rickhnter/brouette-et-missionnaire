@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { GameEvent } from '@/hooks/useGameEvents';
 import { Loader2, Heart, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { eventIcons } from './eventIcons';
 
 interface SyncEventProps {
   event: GameEvent;
@@ -34,6 +35,7 @@ export const SyncEvent: React.FC<SyncEventProps> = ({
   const [response, setResponse] = useState('');
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [showInput, setShowInput] = useState(false);
+  const syncIcon = eventIcons.sync;
 
   useEffect(() => {
     if (isReady && countdown > 0) {
@@ -61,9 +63,12 @@ export const SyncEvent: React.FC<SyncEventProps> = ({
     return (
       <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
-            <span>🔗</span> {event.title}
-          </CardTitle>
+          <div className="flex justify-center mb-3">
+            <div className="bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full p-3 shadow-lg">
+              <img src={syncIcon.icon} alt="" className="w-6 h-6 object-contain" />
+            </div>
+          </div>
+          <CardTitle className="text-xl font-serif text-rose-800">{event.title}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground text-center text-sm mb-4">{event.description}</p>
@@ -115,11 +120,14 @@ export const SyncEvent: React.FC<SyncEventProps> = ({
     return (
       <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
-            <span>🔗</span> {event.title}
-          </CardTitle>
+          <div className="flex justify-center mb-3">
+            <div className="bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full p-3 shadow-lg">
+              <img src={syncIcon.icon} alt="" className="w-6 h-6 object-contain" />
+            </div>
+          </div>
+          <CardTitle className="text-xl font-serif text-rose-800">{event.title}</CardTitle>
         </CardHeader>
-        <CardContent className="text-center py-8">
+        <CardContent className="text-center py-6">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -166,9 +174,12 @@ export const SyncEvent: React.FC<SyncEventProps> = ({
     return (
       <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
-            <span>⚡</span> Vite !
-          </CardTitle>
+          <div className="flex justify-center mb-3">
+            <div className="bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full p-3 shadow-lg">
+              <Zap className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <CardTitle className="text-xl font-serif text-rose-800">Vite !</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <motion.div
@@ -203,23 +214,20 @@ export const SyncEvent: React.FC<SyncEventProps> = ({
   return (
     <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
       <CardHeader className="text-center pb-2">
-        <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
-          <span>🔗</span> {event.title}
-        </CardTitle>
+        <div className="flex justify-center mb-3">
+          <motion.div 
+            className="bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full p-4 shadow-lg"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ repeat: Infinity, repeatType: 'reverse', duration: 0.8 }}
+          >
+            <img src={syncIcon.icon} alt="" className="w-8 h-8 object-contain" />
+          </motion.div>
+        </div>
+        <CardTitle className="text-xl font-serif text-rose-800">{event.title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-muted-foreground text-center">{event.description}</p>
-
-        <motion.div
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          transition={{ repeat: Infinity, repeatType: 'reverse', duration: 0.8 }}
-          className="flex justify-center my-6"
-        >
-          <div className="bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full p-6 shadow-lg">
-            <Zap className="h-12 w-12 text-white" />
-          </div>
-        </motion.div>
 
         <p className="text-center text-sm text-muted-foreground">
           Un compte à rebours va démarrer. Réponds le plus vite possible !

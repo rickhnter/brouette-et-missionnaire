@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { GameEvent } from '@/hooks/useGameEvents';
 import { Loader2, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { eventIcons } from './eventIcons';
 
 interface GameEventComponentProps {
   event: GameEvent;
@@ -48,6 +49,7 @@ export const GameEventComponent: React.FC<GameEventComponentProps> = ({
 }) => {
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const gameIcon = eventIcons.game;
 
   const handleChoice = (choice: string) => {
     setSelectedChoice(choice);
@@ -64,9 +66,12 @@ export const GameEventComponent: React.FC<GameEventComponentProps> = ({
     return (
       <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
-            <span>🎲</span> {event.title}
-          </CardTitle>
+          <div className="flex justify-center mb-3">
+            <div className="bg-gradient-to-r from-orange-400 to-amber-500 rounded-full p-3 shadow-lg">
+              <img src={gameIcon.icon} alt="" className="w-6 h-6 object-contain" />
+            </div>
+          </div>
+          <CardTitle className="text-xl font-serif text-rose-800">{event.title}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-4">
@@ -166,11 +171,14 @@ export const GameEventComponent: React.FC<GameEventComponentProps> = ({
     return (
       <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
-            <span>🎲</span> {event.title}
-          </CardTitle>
+          <div className="flex justify-center mb-3">
+            <div className="bg-gradient-to-r from-orange-400 to-amber-500 rounded-full p-3 shadow-lg">
+              <img src={gameIcon.icon} alt="" className="w-6 h-6 object-contain" />
+            </div>
+          </div>
+          <CardTitle className="text-xl font-serif text-rose-800">{event.title}</CardTitle>
         </CardHeader>
-        <CardContent className="text-center py-8">
+        <CardContent className="text-center py-6">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -201,9 +209,17 @@ export const GameEventComponent: React.FC<GameEventComponentProps> = ({
   return (
     <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
       <CardHeader className="text-center pb-2">
-        <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
-          <span>🎲</span> {event.title}
-        </CardTitle>
+        <div className="flex justify-center mb-3">
+          <motion.div 
+            className="bg-gradient-to-r from-orange-400 to-amber-500 rounded-full p-4 shadow-lg"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ repeat: Infinity, repeatType: 'reverse', duration: 1 }}
+          >
+            <img src={gameIcon.icon} alt="" className="w-8 h-8 object-contain" />
+          </motion.div>
+        </div>
+        <CardTitle className="text-xl font-serif text-rose-800">{event.title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <p className="text-muted-foreground text-center">{event.description}</p>
