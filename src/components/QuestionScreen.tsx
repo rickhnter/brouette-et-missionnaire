@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import levelIcon from '@/assets/level-icon.jpg';
+import levelIcon from '@/assets/icon-flamme.svg';
 import { SuggestionModal } from './SuggestionModal';
 import { CardBottomActions } from './CardBottomActions';
 
