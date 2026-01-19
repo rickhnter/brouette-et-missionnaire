@@ -26,6 +26,7 @@ type GameState =
   | 'event'
   | 'event-waiting'
   | 'event-reveal'
+  | 'partner-event-waiting'
   | 'partner-event-notification';
 
 interface RevealData {
@@ -59,6 +60,7 @@ const Index = () => {
   } = useAnswers(session?.id || null, session?.current_question_id || null);
 
   const {
+    events,
     shouldTriggerEvent,
     getRandomEvent,
     submitResponse,
@@ -117,6 +119,56 @@ const Index = () => {
       }
     }
   }, [session, gameState, playerName, startGame, playerAnswered, partnerAnswered]);
+
+  // Détecter quand le partenaire a un événement individuel en cours
+  useEffect(() => {
+    if (!session || !playerName || !events.length) return;
+    
+    const sessionAny = session as any;
+    const currentEventId = sessionAny.current_event_id;
+    const eventPlayerName = sessionAny.event_player_name;
+    
+    // Si un événement est en cours et ce n'est pas pour ce joueur
+    if (currentEventId && eventPlayerName && eventPlayerName !== playerName) {
+      const event = events.find(e => e.id === currentEventId);
+      if (event && !event.requires_both) {
+        setPartnerEvent(event);
+        
+        // Vérifier si le partenaire a déjà répondu
+        fetchResponses(currentEventId).then(() => {
+          const partnerResp = getPartnerResponse(currentEventId, playerName);
+          if (partnerResp?.completed) {
+            setPartnerEventResponse(partnerResp.response);
+            setGameState('partner-event-notification');
+          } else {
+            setGameState('partner-event-waiting');
+          }
+        });
+      }
+    } else if (!currentEventId && (gameState === 'partner-event-waiting' || gameState === 'partner-event-notification')) {
+      // L'événement est terminé, retourner à la question
+      setPartnerEvent(null);
+      setPartnerEventResponse(null);
+      setGameState('question');
+    }
+  }, [session, playerName, events, gameState, fetchResponses, getPartnerResponse]);
+
+  // Surveiller les réponses du partenaire pendant partner-event-waiting
+  useEffect(() => {
+    if (gameState !== 'partner-event-waiting' || !partnerEvent || !playerName) return;
+
+    const checkPartnerResponse = async () => {
+      await fetchResponses(partnerEvent.id);
+      const partnerResp = getPartnerResponse(partnerEvent.id, playerName);
+      if (partnerResp?.completed) {
+        setPartnerEventResponse(partnerResp.response);
+        setGameState('partner-event-notification');
+      }
+    };
+
+    const interval = setInterval(checkPartnerResponse, 2000);
+    return () => clearInterval(interval);
+  }, [gameState, partnerEvent, playerName, fetchResponses, getPartnerResponse]);
 
   // Initialiser le compteur de questions répondues à partir de la base de données
   useEffect(() => {
@@ -208,6 +260,13 @@ const Index = () => {
       if (event) {
         setCurrentEvent(event);
         resetResponses();
+        
+        // Stocker l'événement dans la session pour synchroniser les deux joueurs
+        await updateSession({
+          current_event_id: event.id,
+          event_player_name: playerName
+        } as any);
+        
         setGameState('event');
         return;
       }
@@ -224,8 +283,10 @@ const Index = () => {
     if (next) {
       await updateSession({ 
         current_question_id: next.question.id,
-        current_level: next.level 
-      });
+        current_level: next.level,
+        current_event_id: null,
+        event_player_name: null
+      } as any);
       setGameState('question');
     } else {
       setGameState('end');
@@ -243,8 +304,26 @@ const Index = () => {
   };
 
   const handleEventComplete = async () => {
+    // Effacer l'événement de la session
+    await updateSession({
+      current_event_id: null,
+      event_player_name: null
+    } as any);
+    
     setCurrentEvent(null);
     resetResponses();
+    await proceedToNextQuestion();
+  };
+
+  const handlePartnerEventContinue = async () => {
+    // Effacer l'événement de la session
+    await updateSession({
+      current_event_id: null,
+      event_player_name: null
+    } as any);
+    
+    setPartnerEvent(null);
+    setPartnerEventResponse(null);
     await proceedToNextQuestion();
   };
 
@@ -391,7 +470,26 @@ const Index = () => {
     );
   }
 
-  // Partner event notification (when partner had an individual action)
+  // Partner event waiting (when partner is performing an individual action)
+  if (gameState === 'partner-event-waiting' && partnerEvent && partnerName) {
+    return (
+      <>
+        <GameNavigation 
+          playerName={playerName!} 
+          onShowHistory={handleShowHistory} 
+          onLogout={handleLogout} 
+        />
+        <PartnerEventNotification
+          event={partnerEvent}
+          partnerName={partnerName}
+          onContinue={handlePartnerEventContinue}
+          isWaiting={true}
+        />
+      </>
+    );
+  }
+
+  // Partner event notification (when partner has completed an individual action)
   if (gameState === 'partner-event-notification' && partnerEvent && partnerName) {
     return (
       <>
@@ -404,11 +502,7 @@ const Index = () => {
           event={partnerEvent}
           partnerName={partnerName}
           partnerResponse={partnerEventResponse}
-          onContinue={() => {
-            setPartnerEvent(null);
-            setPartnerEventResponse(null);
-            setGameState('reveal');
-          }}
+          onContinue={handlePartnerEventContinue}
         />
       </>
     );
