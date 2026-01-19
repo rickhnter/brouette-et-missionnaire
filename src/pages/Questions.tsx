@@ -9,6 +9,7 @@ import { useQuestions } from '@/hooks/useQuestions';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, Plus, Pencil, Check, X, GripVertical, AlertCircle } from 'lucide-react';
+import levelIcon from '@/assets/icon-flamme.svg';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DndContext,
@@ -116,9 +117,11 @@ const SortableRow = ({
         {index + 1}
       </td>
       <td className="p-3 w-32">
-        <span className="text-sm">
-          {levelLabels[q.level]?.split(' - ')[0] || `Niveau ${q.level}`}
-        </span>
+        <div className="flex items-center gap-0.5">
+          {Array.from({ length: q.level }).map((_, i) => (
+            <img key={i} src={levelIcon} alt="" className="w-5 h-5 object-contain" />
+          ))}
+        </div>
       </td>
       <td className="p-3 text-rose-700">
         {editingId === q.id ? (
@@ -243,7 +246,11 @@ const SortableEventRow = ({
         <span className="text-lg">{typeLabels[event.type]}</span>
       </td>
       <td className="p-3 w-24">
-        <span className="text-sm">Niv. {event.level}</span>
+        <div className="flex items-center gap-0.5">
+          {Array.from({ length: event.level }).map((_, i) => (
+            <img key={i} src={levelIcon} alt="" className="w-5 h-5 object-contain" />
+          ))}
+        </div>
       </td>
       <td className="p-3 text-rose-700">
         {editingId === event.id ? (

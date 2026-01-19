@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, MessageCircle, Heart, Camera, Zap, Gamepad2, Lock } from 'lucide-react';
 import { useHistory } from '@/hooks/useHistory';
-import levelIcon from '@/assets/level-icon.jpg';
+import levelIcon from '@/assets/icon-flamme.svg';
 import { EventBadge } from '@/components/events/EventBadge';
 
 interface HistoryScreenProps {
