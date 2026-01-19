@@ -731,7 +731,7 @@ const Questions = () => {
     </SelectItem>
   );
 
-  if (loading) {
+  if (loading || eventsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center">
         <div className="text-rose-600">Chargement...</div>
