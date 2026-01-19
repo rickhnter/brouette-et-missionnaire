@@ -27,7 +27,7 @@ export interface EventResponse {
   created_at: string;
 }
 
-const EVENT_TRIGGER_PROBABILITY = 0.25; // 25% chance
+const EVENT_TRIGGER_PROBABILITY = 0.40; // 40% chance
 
 export const useGameEvents = (sessionId: string | null) => {
   const [events, setEvents] = useState<GameEvent[]>([]);

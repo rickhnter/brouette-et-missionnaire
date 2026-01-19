@@ -48,7 +48,7 @@ const Index = () => {
   const [partnerEventResponse, setPartnerEventResponse] = useState<string | null>(null);
   // Track answered questions to persist event trigger logic across page reloads
   const answeredQuestionsCount = useRef(0);
-
+  const answeredQuestionsInitialized = useRef(false);
   const { session, loading, findOrCreateSession, startGame, updateSession } = useGameSession(playerName);
   const { questions, getQuestionById, getNextQuestion, loading: questionsLoading } = useQuestions();
   const { 
@@ -117,6 +117,29 @@ const Index = () => {
       }
     }
   }, [session, gameState, playerName, startGame, playerAnswered, partnerAnswered]);
+
+  // Initialiser le compteur de questions répondues à partir de la base de données
+  useEffect(() => {
+    const initializeAnsweredCount = async () => {
+      if (!session?.id || answeredQuestionsInitialized.current) return;
+      
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase
+        .from('answers')
+        .select('question_id')
+        .eq('session_id', session.id);
+      
+      if (!error && data) {
+        // Compter les questions uniques répondues (chaque question a 2 réponses)
+        const uniqueQuestions = new Set(data.map(a => a.question_id));
+        answeredQuestionsCount.current = uniqueQuestions.size;
+        answeredQuestionsInitialized.current = true;
+        console.log('Initialized answered questions count:', answeredQuestionsCount.current);
+      }
+    };
+    
+    initializeAnsweredCount();
+  }, [session?.id]);
 
   // Réinitialiser l'état quand la question change
   const [lastQuestionId, setLastQuestionId] = useState<string | null>(null);
