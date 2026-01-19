@@ -72,27 +72,20 @@ export const HistoryScreen = ({ sessionId, onBack }: HistoryScreenProps) => {
                 )}
               </CardHeader>
               <CardContent className="space-y-3">
-                {entry.type === 'event' && entry.isPrivate ? (
-                  // Single user event - show only the user who did the action
-                  <div className="p-3 bg-gradient-to-br from-rose-50 to-pink-50 rounded-lg border border-rose-100">
-                    <p className="text-xs font-medium text-rose-500 mb-1">
-                      {entry.player1_answer ? entry.player1_name : entry.player2_name}
-                    </p>
-                    <p className="text-rose-800">{entry.player1_answer || entry.player2_answer || '—'}</p>
-                  </div>
-                ) : (
-                  // Two player responses
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className={`grid grid-cols-1 ${entry.player1_answer && entry.player2_answer ? 'md:grid-cols-2' : ''} gap-3`}>
+                  {entry.player1_answer && (
                     <div className="p-3 bg-gradient-to-br from-rose-50 to-pink-50 rounded-lg border border-rose-100">
                       <p className="text-xs font-medium text-rose-500 mb-1">{entry.player1_name}</p>
-                      <p className="text-rose-800">{entry.player1_answer || '—'}</p>
+                      <p className="text-rose-800">{entry.player1_answer}</p>
                     </div>
+                  )}
+                  {entry.player2_answer && (
                     <div className="p-3 bg-gradient-to-br from-pink-50 to-rose-50 rounded-lg border border-pink-100">
                       <p className="text-xs font-medium text-pink-500 mb-1">{entry.player2_name}</p>
-                      <p className="text-pink-800">{entry.player2_answer || '—'}</p>
+                      <p className="text-pink-800">{entry.player2_answer}</p>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))
