@@ -14,7 +14,7 @@ const TypingDots = () => {
       {[0, 1, 2].map((i) => (
         <motion.div
           key={i}
-          className="w-3 h-3 bg-rose-400 rounded-full"
+          className="w-3 h-3 bg-white rounded-full shadow-md"
           animate={{
             y: [0, -8, 0],
             opacity: [0.5, 1, 0.5],
