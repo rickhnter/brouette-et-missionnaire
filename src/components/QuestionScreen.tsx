@@ -100,11 +100,6 @@ export const QuestionScreen = ({
             <p className="text-xl text-center text-rose-800 font-serif leading-relaxed">
               {question.question}
             </p>
-            {question.proposed_by && (
-              <p className="text-xs text-center text-rose-400 italic">
-                Proposée par {question.proposed_by}
-              </p>
-            )}
             
             <div className="flex gap-3 pt-4">
               <Button
