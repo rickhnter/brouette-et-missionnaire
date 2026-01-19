@@ -22,6 +22,7 @@ interface Question {
   question: string;
   level: number;
   suggestions: string[];
+  proposed_by?: string | null;
 }
 
 interface QuestionScreenProps {
@@ -99,6 +100,11 @@ export const QuestionScreen = ({
             <p className="text-xl text-center text-rose-800 font-serif leading-relaxed">
               {question.question}
             </p>
+            {question.proposed_by && (
+              <p className="text-xs text-center text-rose-400 italic">
+                Proposée par {question.proposed_by}
+              </p>
+            )}
             
             <div className="flex gap-3 pt-4">
               <Button
@@ -154,6 +160,7 @@ export const QuestionScreen = ({
           isOpen={showSuggestionModal}
           onClose={() => setShowSuggestionModal(false)}
           currentLevel={question.level}
+          playerName={playerName}
         />
       </div>
     );
@@ -236,6 +243,7 @@ export const QuestionScreen = ({
         isOpen={showSuggestionModal}
         onClose={() => setShowSuggestionModal(false)}
         currentLevel={question.level}
+        playerName={playerName}
       />
     </div>
   );
