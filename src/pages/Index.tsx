@@ -10,12 +10,13 @@ import { GameNavigation } from '@/components/GameNavigation';
 import { EndScreen } from '@/components/EndScreen';
 import { EventScreen } from '@/components/events/EventScreen';
 import { PartnerEventNotification } from '@/components/events/PartnerEventNotification';
+import { LevelUpAnimation } from '@/components/LevelUpAnimation';
 import { useGameSession } from '@/hooks/useGameSession';
 import { useQuestions } from '@/hooks/useQuestions';
 import { useAnswers } from '@/hooks/useAnswers';
 import { useGameEvents, GameEvent } from '@/hooks/useGameEvents';
 
-type GameState = 
+type GameState =
   | 'login'
   | 'waiting'
   | 'question'
@@ -47,6 +48,9 @@ const Index = () => {
   const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null);
   const [partnerEvent, setPartnerEvent] = useState<GameEvent | null>(null);
   const [partnerEventResponse, setPartnerEventResponse] = useState<string | null>(null);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [levelUpLevel, setLevelUpLevel] = useState<number>(1);
+  const previousLevelRef = useRef<number | null>(null);
   // Track answered questions to persist event trigger logic across page reloads
   const answeredQuestionsCount = useRef(0);
   const answeredQuestionsInitialized = useRef(false);
@@ -281,16 +285,30 @@ const Index = () => {
     const next = getNextQuestion(session.current_level, session.current_question_id);
     
     if (next) {
+      // Détecter le changement de niveau
+      const isLevelUp = next.level > session.current_level;
+      
       await updateSession({ 
         current_question_id: next.question.id,
         current_level: next.level,
         current_event_id: null,
         event_player_name: null
       } as any);
-      setGameState('question');
+      
+      if (isLevelUp) {
+        setLevelUpLevel(next.level);
+        setShowLevelUp(true);
+      } else {
+        setGameState('question');
+      }
     } else {
       setGameState('end');
     }
+  };
+
+  const handleLevelUpComplete = () => {
+    setShowLevelUp(false);
+    setGameState('question');
   };
 
   const handleEventSubmit = async (response: string | null) => {
@@ -358,6 +376,11 @@ const Index = () => {
     await startGame();
     setGameState('question');
   };
+
+  // Level Up Animation
+  if (showLevelUp) {
+    return <LevelUpAnimation level={levelUpLevel} onComplete={handleLevelUpComplete} />;
+  }
 
   if (gameState === 'login') {
     const validPlayer = playerFromUrl === 'Pierrick' || playerFromUrl === 'Daisy' ? playerFromUrl : null;
