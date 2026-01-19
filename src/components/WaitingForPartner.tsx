@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardBottomActions } from './CardBottomActions';
+import { SuggestionModal } from './SuggestionModal';
 import { motion } from 'framer-motion';
 
 interface WaitingForPartnerProps {
   partnerName: string;
+  currentLevel: number;
+  playerName: string;
   onShowHistory: () => void;
   onLogout: () => void;
 }
@@ -31,7 +35,9 @@ const TypingDots = () => {
   );
 };
 
-export const WaitingForPartner = ({ partnerName, onShowHistory, onLogout }: WaitingForPartnerProps) => {
+export const WaitingForPartner = ({ partnerName, currentLevel, playerName, onShowHistory, onLogout }: WaitingForPartnerProps) => {
+  const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
@@ -68,11 +74,25 @@ export const WaitingForPartner = ({ partnerName, onShowHistory, onLogout }: Wait
             En attente de sa réponse...
           </p>
           
+          <button
+            onClick={() => setIsSuggestionModalOpen(true)}
+            className="text-sm text-rose-500 hover:text-rose-600 underline transition-colors"
+          >
+            + Proposer une idée
+          </button>
+          
           <p className="text-xs text-rose-400">
             Rafraîchissement automatique toutes les 5 secondes
           </p>
 
           <CardBottomActions onShowHistory={onShowHistory} onLogout={onLogout} />
+          
+          <SuggestionModal
+            isOpen={isSuggestionModalOpen}
+            onClose={() => setIsSuggestionModalOpen(false)}
+            currentLevel={currentLevel}
+            playerName={playerName}
+          />
         </CardContent>
       </Card>
     </div>
