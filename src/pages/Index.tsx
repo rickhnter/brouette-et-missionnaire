@@ -46,7 +46,8 @@ const Index = () => {
   const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null);
   const [partnerEvent, setPartnerEvent] = useState<GameEvent | null>(null);
   const [partnerEventResponse, setPartnerEventResponse] = useState<string | null>(null);
-  const questionIndexRef = useRef(0);
+  // Track answered questions to persist event trigger logic across page reloads
+  const answeredQuestionsCount = useRef(0);
 
   const { session, loading, findOrCreateSession, startGame, updateSession } = useGameSession(playerName);
   const { questions, getQuestionById, getNextQuestion, loading: questionsLoading } = useQuestions();
@@ -176,10 +177,10 @@ const Index = () => {
     }
 
     setRevealData(null);
-    questionIndexRef.current += 1;
+    answeredQuestionsCount.current += 1;
 
-    // Check if we should trigger an event (~25% chance)
-    if (shouldTriggerEvent(questionIndexRef.current)) {
+    // Check if we should trigger an event (~25% chance, not on first 2 questions)
+    if (answeredQuestionsCount.current >= 2 && shouldTriggerEvent(answeredQuestionsCount.current)) {
       const event = getRandomEvent(session.current_level);
       if (event) {
         setCurrentEvent(event);
