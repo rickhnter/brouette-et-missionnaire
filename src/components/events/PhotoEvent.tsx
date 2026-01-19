@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GameEvent } from '@/hooks/useGameEvents';
-import { Camera, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { eventIcons } from './eventIcons';
 
 interface PhotoEventProps {
   event: GameEvent;
@@ -19,6 +20,7 @@ export const PhotoEvent: React.FC<PhotoEventProps> = ({
   onComplete
 }) => {
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const photoIcon = eventIcons.photo;
 
   const handleConfirm = () => {
     onSubmit('photo_sent');
@@ -33,11 +35,16 @@ export const PhotoEvent: React.FC<PhotoEventProps> = ({
     return (
       <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
-            <span>📸</span> {event.title}
+          <div className="flex justify-center mb-3">
+            <div className="bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full p-3 shadow-lg">
+              <img src={photoIcon.icon} alt="" className="w-6 h-6 object-contain" />
+            </div>
+          </div>
+          <CardTitle className="text-xl font-serif text-rose-800">
+            {event.title}
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-center py-8">
+        <CardContent className="text-center py-6">
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -48,7 +55,7 @@ export const PhotoEvent: React.FC<PhotoEventProps> = ({
               <Check className="h-8 w-8 text-white" />
             </div>
           </motion.div>
-          <p className="text-lg font-medium text-rose-800 mb-2">Photo envoyée ! 📷</p>
+          <p className="text-lg font-medium text-rose-800 mb-2">Photo envoyée !</p>
           <p className="text-muted-foreground text-sm mb-6">
             Ton/ta partenaire va adorer ❤️
           </p>
@@ -66,23 +73,22 @@ export const PhotoEvent: React.FC<PhotoEventProps> = ({
   return (
     <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
       <CardHeader className="text-center pb-2">
-        <CardTitle className="text-xl font-serif text-rose-800 flex items-center justify-center gap-2">
-          <span>📸</span> {event.title}
+        <div className="flex justify-center mb-3">
+          <motion.div 
+            className="bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full p-4 shadow-lg"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ repeat: Infinity, repeatType: 'reverse', duration: 1 }}
+          >
+            <img src={photoIcon.icon} alt="" className="w-8 h-8 object-contain" />
+          </motion.div>
+        </div>
+        <CardTitle className="text-xl font-serif text-rose-800">
+          {event.title}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <p className="text-muted-foreground text-center">{event.description}</p>
-
-        <motion.div
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          transition={{ repeat: Infinity, repeatType: 'reverse', duration: 1 }}
-          className="flex justify-center"
-        >
-          <div className="bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full p-6 shadow-lg">
-            <Camera className="h-12 w-12 text-white" />
-          </div>
-        </motion.div>
 
         <p className="text-center text-sm text-muted-foreground">
           Envoie ta photo à ton/ta partenaire via ta messagerie préférée, puis confirme ici !
@@ -93,7 +99,7 @@ export const PhotoEvent: React.FC<PhotoEventProps> = ({
             onClick={handleConfirm} 
             className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
           >
-            <Camera className="h-4 w-4 mr-2" />
+            <img src={photoIcon.icon} alt="" className="w-4 h-4 mr-2 object-contain" />
             Photo envoyée !
           </Button>
           <Button 

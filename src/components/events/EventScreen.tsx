@@ -6,7 +6,6 @@ import { PhotoEvent } from './PhotoEvent';
 import { SyncEvent } from './SyncEvent';
 import { GameEventComponent } from './GameEvent';
 import { ConfessionEvent } from './ConfessionEvent';
-import { EventBadge } from './EventBadge';
 import { motion } from 'framer-motion';
 
 interface EventScreenProps {
@@ -71,21 +70,11 @@ export const EventScreen: React.FC<EventScreenProps> = ({
         transition={{ type: 'spring', stiffness: 200, damping: 20 }}
         className="w-full max-w-md"
       >
-        {/* Event Badge */}
-        <motion.div
-          initial={{ y: -30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2, type: 'spring' }}
-          className="flex justify-center mb-4"
-        >
-          <EventBadge type={event.type as any} size="lg" />
-        </motion.div>
-
-        {/* Event Content */}
+        {/* Event Content - Badge is now integrated inside each event component */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.2 }}
         >
           {renderEventContent()}
         </motion.div>
