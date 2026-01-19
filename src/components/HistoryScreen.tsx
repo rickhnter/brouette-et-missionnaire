@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useHistory } from '@/hooks/useHistory';
 import { levelIcon, eventIcons, EventType } from '@/components/events/eventIcons';
-import { EventBadge } from '@/components/events/EventBadge';
 
 interface HistoryScreenProps {
   sessionId: string;
@@ -13,7 +12,7 @@ interface HistoryScreenProps {
 const getEventIcon = (type: string) => {
   const config = eventIcons[type as EventType];
   return config ? (
-    <img src={config.icon} alt="" className="w-4 h-4 object-contain" />
+    <img src={config.icon} alt="" className="w-6 h-6 object-contain" />
   ) : null;
 };
 
@@ -58,13 +57,14 @@ export const HistoryScreen = ({ sessionId, onBack }: HistoryScreenProps) => {
                     ))}
                   </div>
                   {entry.type === 'event' && entry.eventType && (
-                    <EventBadge type={entry.eventType as EventType} size="sm" />
+                    <img 
+                      src={eventIcons[entry.eventType as EventType]?.icon} 
+                      alt="" 
+                      className="w-7 h-7 object-contain" 
+                    />
                   )}
                 </div>
-                <CardTitle className="text-lg font-serif text-rose-800 flex items-center gap-2">
-                  {entry.type === 'event' && entry.eventType && (
-                    <span className="text-rose-500">{getEventIcon(entry.eventType)}</span>
-                  )}
+                <CardTitle className="text-lg font-serif text-rose-800">
                   {entry.type === 'event' ? entry.eventTitle : entry.content}
                 </CardTitle>
                 {entry.type === 'event' && (
@@ -72,16 +72,27 @@ export const HistoryScreen = ({ sessionId, onBack }: HistoryScreenProps) => {
                 )}
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {entry.type === 'event' && entry.isPrivate ? (
+                  // Single user event - show only the user who did the action
                   <div className="p-3 bg-gradient-to-br from-rose-50 to-pink-50 rounded-lg border border-rose-100">
-                    <p className="text-xs font-medium text-rose-500 mb-1">{entry.player1_name}</p>
-                    <p className="text-rose-800">{entry.player1_answer || '—'}</p>
+                    <p className="text-xs font-medium text-rose-500 mb-1">
+                      {entry.player1_answer ? entry.player1_name : entry.player2_name}
+                    </p>
+                    <p className="text-rose-800">{entry.player1_answer || entry.player2_answer || '—'}</p>
                   </div>
-                  <div className="p-3 bg-gradient-to-br from-pink-50 to-rose-50 rounded-lg border border-pink-100">
-                    <p className="text-xs font-medium text-pink-500 mb-1">{entry.player2_name}</p>
-                    <p className="text-pink-800">{entry.player2_answer || '—'}</p>
+                ) : (
+                  // Two player responses
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="p-3 bg-gradient-to-br from-rose-50 to-pink-50 rounded-lg border border-rose-100">
+                      <p className="text-xs font-medium text-rose-500 mb-1">{entry.player1_name}</p>
+                      <p className="text-rose-800">{entry.player1_answer || '—'}</p>
+                    </div>
+                    <div className="p-3 bg-gradient-to-br from-pink-50 to-rose-50 rounded-lg border border-pink-100">
+                      <p className="text-xs font-medium text-pink-500 mb-1">{entry.player2_name}</p>
+                      <p className="text-pink-800">{entry.player2_answer || '—'}</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           ))

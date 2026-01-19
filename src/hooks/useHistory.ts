@@ -13,6 +13,7 @@ interface HistoryEntry {
   created_at: string;
   eventType?: string;
   eventTitle?: string;
+  isPrivate?: boolean;
 }
 
 export const useHistory = (sessionId: string | null) => {
@@ -52,7 +53,8 @@ export const useHistory = (sessionId: string | null) => {
             type,
             title,
             description,
-            level
+            level,
+            is_private
           ),
           game_sessions:session_id (
             player1_name,
@@ -117,7 +119,8 @@ export const useHistory = (sessionId: string | null) => {
             player2_name: session?.player2_name || '',
             created_at: response.created_at,
             eventType: event?.type,
-            eventTitle: event?.title
+            eventTitle: event?.title,
+            isPrivate: event?.is_private || false
           });
         }
 
