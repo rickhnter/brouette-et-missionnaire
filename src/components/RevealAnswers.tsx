@@ -90,6 +90,7 @@ export const RevealAnswers = ({
         isOpen={showSuggestionModal}
         onClose={() => setShowSuggestionModal(false)}
         currentLevel={currentLevel}
+        playerName={playerName}
       />
     </div>
   );

@@ -112,6 +112,7 @@ export type Database = {
           is_private: boolean
           level: number
           options: string[] | null
+          proposed_by: string | null
           requires_both: boolean
           sort_order: number | null
           title: string
@@ -124,6 +125,7 @@ export type Database = {
           is_private?: boolean
           level?: number
           options?: string[] | null
+          proposed_by?: string | null
           requires_both?: boolean
           sort_order?: number | null
           title: string
@@ -136,6 +138,7 @@ export type Database = {
           is_private?: boolean
           level?: number
           options?: string[] | null
+          proposed_by?: string | null
           requires_both?: boolean
           sort_order?: number | null
           title?: string
@@ -208,6 +211,7 @@ export type Database = {
           created_at: string
           id: string
           level: number
+          proposed_by: string | null
           question: string
           sort_order: number | null
           suggestions: string[] | null
@@ -216,6 +220,7 @@ export type Database = {
           created_at?: string
           id?: string
           level?: number
+          proposed_by?: string | null
           question: string
           sort_order?: number | null
           suggestions?: string[] | null
@@ -224,6 +229,7 @@ export type Database = {
           created_at?: string
           id?: string
           level?: number
+          proposed_by?: string | null
           question?: string
           sort_order?: number | null
           suggestions?: string[] | null

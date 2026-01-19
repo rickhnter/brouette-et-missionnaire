@@ -12,6 +12,7 @@ interface SuggestionModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentLevel: number;
+  playerName?: string;
 }
 
 const EVENT_TYPES = [
@@ -23,7 +24,7 @@ const EVENT_TYPES = [
   { value: 'confession', label: '💋 Confession' },
 ];
 
-export const SuggestionModal = ({ isOpen, onClose, currentLevel }: SuggestionModalProps) => {
+export const SuggestionModal = ({ isOpen, onClose, currentLevel, playerName }: SuggestionModalProps) => {
   const [type, setType] = useState<'question' | 'event'>('question');
   const [selectedLevel, setSelectedLevel] = useState<number>(Math.max(currentLevel, 1));
   const [content, setContent] = useState('');
@@ -44,8 +45,9 @@ export const SuggestionModal = ({ isOpen, onClose, currentLevel }: SuggestionMod
           question: content.trim(),
           level: selectedLevel,
           suggestions: [],
-          sort_order: 9999
-        });
+          sort_order: 9999,
+          proposed_by: playerName || null
+        } as any);
         if (error) throw error;
       } else {
         const { error } = await supabase.from('game_events').insert({
@@ -55,8 +57,9 @@ export const SuggestionModal = ({ isOpen, onClose, currentLevel }: SuggestionMod
           level: selectedLevel,
           requires_both: eventType === 'sync',
           is_private: false,
-          sort_order: 9999
-        });
+          sort_order: 9999,
+          proposed_by: playerName || null
+        } as any);
         if (error) throw error;
       }
 

@@ -35,6 +35,7 @@ interface Question {
   level: number;
   sort_order: number | null;
   suggestions: string[] | null;
+  proposed_by?: string | null;
 }
 
 interface GameEvent {
@@ -47,6 +48,7 @@ interface GameEvent {
   is_private: boolean;
   options: string[] | null;
   sort_order: number | null;
+  proposed_by?: string | null;
 }
 
 interface SortableRowProps {
@@ -131,7 +133,12 @@ const SortableRow = ({
             }}
           />
         ) : (
-          q.question
+          <div>
+            <div>{q.question}</div>
+            {q.proposed_by && (
+              <div className="text-xs text-rose-400 italic">Proposée par {q.proposed_by}</div>
+            )}
+          </div>
         )}
       </td>
       <td className="p-3 w-24">
@@ -258,6 +265,9 @@ const SortableEventRow = ({
           <div>
             <div className="font-medium">{event.title}</div>
             <div className="text-sm text-muted-foreground truncate max-w-xs">{event.description}</div>
+            {event.proposed_by && (
+              <div className="text-xs text-rose-400 italic">Proposée par {event.proposed_by}</div>
+            )}
           </div>
         )}
       </td>

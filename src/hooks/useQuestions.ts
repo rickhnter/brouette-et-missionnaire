@@ -7,6 +7,7 @@ interface Question {
   level: number;
   suggestions: string[];
   sort_order: number;
+  proposed_by?: string | null;
 }
 
 export const useQuestions = () => {
