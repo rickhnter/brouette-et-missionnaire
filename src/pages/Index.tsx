@@ -355,6 +355,8 @@ const Index = () => {
         />
         <WaitingForPartner 
           partnerName={partnerName}
+          currentLevel={session?.current_level || 1}
+          playerName={playerName!}
           onShowHistory={handleShowHistory}
           onLogout={handleLogout}
         />
