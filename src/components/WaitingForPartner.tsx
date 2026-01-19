@@ -1,12 +1,35 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
 import { CardBottomActions } from './CardBottomActions';
+import { motion } from 'framer-motion';
 
 interface WaitingForPartnerProps {
   partnerName: string;
   onShowHistory: () => void;
   onLogout: () => void;
 }
+
+const TypingDots = () => {
+  return (
+    <div className="flex items-center justify-center gap-1.5">
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="w-3 h-3 bg-rose-400 rounded-full"
+          animate={{
+            y: [0, -8, 0],
+            opacity: [0.5, 1, 0.5],
+          }}
+          transition={{
+            duration: 0.8,
+            repeat: Infinity,
+            delay: i * 0.15,
+            ease: 'easeInOut',
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 export const WaitingForPartner = ({ partnerName, onShowHistory, onLogout }: WaitingForPartnerProps) => {
   return (
@@ -20,18 +43,30 @@ export const WaitingForPartner = ({ partnerName, onShowHistory, onLogout }: Wait
         <CardContent className="space-y-6 text-center">
           <div className="py-8">
             <div className="relative mx-auto w-32 h-32">
-              <div className="absolute inset-0 bg-gradient-to-br from-rose-200 to-pink-200 rounded-full animate-pulse" />
-              <div className="absolute inset-4 bg-gradient-to-br from-rose-300 to-pink-300 rounded-full animate-pulse delay-100" />
-              <div className="absolute inset-8 bg-gradient-to-br from-rose-400 to-pink-400 rounded-full animate-pulse delay-200" />
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-br from-rose-200 to-pink-200 rounded-full"
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <motion.div
+                className="absolute inset-4 bg-gradient-to-br from-rose-300 to-pink-300 rounded-full"
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
+              />
+              <motion.div
+                className="absolute inset-8 bg-gradient-to-br from-rose-400 to-pink-400 rounded-full"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
+              />
               <div className="absolute inset-0 flex items-center justify-center">
-                <Loader2 className="w-10 h-10 text-white animate-spin" />
+                <TypingDots />
               </div>
             </div>
           </div>
           
           <div className="flex items-center justify-center gap-2 text-rose-600">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-sm italic">En attente de sa réponse...</span>
+            <TypingDots />
+            <span className="text-sm italic ml-2">En attente de sa réponse...</span>
           </div>
           
           <p className="text-xs text-rose-400">
