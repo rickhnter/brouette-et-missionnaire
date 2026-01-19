@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Lightbulb } from 'lucide-react';
+import { levelIcon, eventIcons, EventType } from '@/components/events/eventIcons';
 
 interface SuggestionModalProps {
   isOpen: boolean;
@@ -15,20 +16,20 @@ interface SuggestionModalProps {
   playerName?: string;
 }
 
-const EVENT_TYPES = [
-  { value: 'message', label: '💌 Message' },
-  { value: 'promise', label: '🤞 Promesse' },
-  { value: 'photo', label: '📸 Photo' },
-  { value: 'sync', label: '🔗 Action synchronisée' },
-  { value: 'game', label: '🎲 Mini-jeu' },
-  { value: 'confession', label: '💋 Confession' },
+const EVENT_TYPES: { value: EventType; label: string; icon: string }[] = [
+  { value: 'message', label: 'Message', icon: eventIcons.message.icon },
+  { value: 'promise', label: 'Promesse', icon: eventIcons.promise.icon },
+  { value: 'photo', label: 'Photo', icon: eventIcons.photo.icon },
+  { value: 'sync', label: 'Action synchronisée', icon: eventIcons.sync.icon },
+  { value: 'game', label: 'Mini-jeu', icon: eventIcons.game.icon },
+  { value: 'confession', label: 'Confession', icon: eventIcons.confession.icon },
 ];
 
 export const SuggestionModal = ({ isOpen, onClose, currentLevel, playerName }: SuggestionModalProps) => {
   const [type, setType] = useState<'question' | 'event'>('question');
   const [selectedLevel, setSelectedLevel] = useState<number>(Math.max(currentLevel, 1));
   const [content, setContent] = useState('');
-  const [eventType, setEventType] = useState('message');
+  const [eventType, setEventType] = useState<EventType>('message');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
@@ -116,7 +117,7 @@ export const SuggestionModal = ({ isOpen, onClose, currentLevel, playerName }: S
             </div>
           </div>
 
-          {/* Level selection */}
+          {/* Level selection with flame icons */}
           <div className="space-y-2">
             <Label className="text-rose-700">Niveau</Label>
             <div className="flex gap-2">
@@ -136,7 +137,7 @@ export const SuggestionModal = ({ isOpen, onClose, currentLevel, playerName }: S
                   }
                   onClick={() => setSelectedLevel(level)}
                 >
-                  {level}
+                  <img src={levelIcon} alt="" className="w-5 h-5 object-contain" />
                 </Button>
               ))}
             </div>
@@ -151,14 +152,17 @@ export const SuggestionModal = ({ isOpen, onClose, currentLevel, playerName }: S
           {type === 'event' && (
             <div className="space-y-2">
               <Label className="text-rose-700">Type d'action</Label>
-              <Select value={eventType} onValueChange={setEventType}>
+              <Select value={eventType} onValueChange={(v) => setEventType(v as EventType)}>
                 <SelectTrigger className="border-rose-200 focus:ring-rose-400">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-rose-200">
                   {EVENT_TYPES.map((et) => (
                     <SelectItem key={et.value} value={et.value}>
-                      {et.label}
+                      <div className="flex items-center gap-2">
+                        <img src={et.icon} alt="" className="w-5 h-5 object-contain" />
+                        <span>{et.label}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>

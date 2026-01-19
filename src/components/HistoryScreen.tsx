@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MessageCircle, Heart, Camera, Zap, Gamepad2, Lock } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useHistory } from '@/hooks/useHistory';
-import levelIcon from '@/assets/icon-flamme.svg';
+import { levelIcon, eventIcons, EventType } from '@/components/events/eventIcons';
 import { EventBadge } from '@/components/events/EventBadge';
 
 interface HistoryScreenProps {
@@ -11,15 +11,10 @@ interface HistoryScreenProps {
 }
 
 const getEventIcon = (type: string) => {
-  switch (type) {
-    case 'message': return <MessageCircle className="w-4 h-4" />;
-    case 'promise': return <Heart className="w-4 h-4" />;
-    case 'photo': return <Camera className="w-4 h-4" />;
-    case 'sync': return <Zap className="w-4 h-4" />;
-    case 'game': return <Gamepad2 className="w-4 h-4" />;
-    case 'confession': return <Lock className="w-4 h-4" />;
-    default: return <Heart className="w-4 h-4" />;
-  }
+  const config = eventIcons[type as EventType];
+  return config ? (
+    <img src={config.icon} alt="" className="w-4 h-4 object-contain" />
+  ) : null;
 };
 
 export const HistoryScreen = ({ sessionId, onBack }: HistoryScreenProps) => {
@@ -63,7 +58,7 @@ export const HistoryScreen = ({ sessionId, onBack }: HistoryScreenProps) => {
                     ))}
                   </div>
                   {entry.type === 'event' && entry.eventType && (
-                    <EventBadge type={entry.eventType as any} size="sm" />
+                    <EventBadge type={entry.eventType as EventType} size="sm" />
                   )}
                 </div>
                 <CardTitle className="text-lg font-serif text-rose-800 flex items-center gap-2">

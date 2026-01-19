@@ -9,7 +9,7 @@ import { useQuestions } from '@/hooks/useQuestions';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, Plus, Pencil, Check, X, GripVertical, AlertCircle } from 'lucide-react';
-import levelIcon from '@/assets/icon-flamme.svg';
+import { levelIcon, eventIcons, EventType } from '@/components/events/eventIcons';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DndContext,
@@ -28,7 +28,6 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { EventType } from '@/hooks/useGameEvents';
 
 interface Question {
   id: string;
@@ -203,7 +202,6 @@ interface SortableEventRowProps {
   handleCancelEdit: () => void;
   handleDelete: (id: string) => void;
   levelLabels: Record<number, string>;
-  typeLabels: Record<string, string>;
 }
 
 const SortableEventRow = ({ 
@@ -217,7 +215,6 @@ const SortableEventRow = ({
   handleCancelEdit, 
   handleDelete,
   levelLabels,
-  typeLabels
 }: SortableEventRowProps) => {
   const {
     attributes,
@@ -234,6 +231,8 @@ const SortableEventRow = ({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const eventIcon = eventIcons[event.type];
+
   return (
     <tr ref={setNodeRef} style={style} className="border-b border-rose-100">
       <td className="p-3 text-rose-500 w-8">
@@ -243,7 +242,9 @@ const SortableEventRow = ({
       </td>
       <td className="p-3 text-rose-500 w-12">{index + 1}</td>
       <td className="p-3 w-24">
-        <span className="text-lg">{typeLabels[event.type]}</span>
+        {eventIcon && (
+          <img src={eventIcon.icon} alt={eventIcon.label} className="w-6 h-6 object-contain" />
+        )}
       </td>
       <td className="p-3 w-24">
         <div className="flex items-center gap-0.5">
@@ -701,30 +702,34 @@ const Questions = () => {
   };
 
   const levelLabels: Record<number, string> = {
-    1: '💕 Niveau 1 - Découverte',
-    2: '💖 Niveau 2 - Complicité',
-    3: '🔥 Niveau 3 - Intimité',
-    4: '💋 Niveau 4 - Passion',
-    5: '🌶️ Niveau 5 - Sans limites',
+    1: 'Niveau 1 - Découverte',
+    2: 'Niveau 2 - Complicité',
+    3: 'Niveau 3 - Intimité',
+    4: 'Niveau 4 - Passion',
+    5: 'Niveau 5 - Sans limites',
   };
 
-  const typeLabels: Record<string, string> = {
-    message: '💌',
-    promise: '🤞',
-    photo: '📸',
-    sync: '🔗',
-    game: '🎲',
-    confession: '💋'
-  };
-
-  const typeOptions: { value: EventType; label: string }[] = [
-    { value: 'message', label: '💌 Message' },
-    { value: 'promise', label: '🤞 Promesse' },
-    { value: 'photo', label: '📸 Photo' },
-    { value: 'sync', label: '🔗 Action sync' },
-    { value: 'game', label: '🎲 Jeu' },
-    { value: 'confession', label: '💋 Confession' }
+  const typeOptions: { value: EventType; label: string; icon: string }[] = [
+    { value: 'message', label: 'Message', icon: eventIcons.message.icon },
+    { value: 'promise', label: 'Promesse', icon: eventIcons.promise.icon },
+    { value: 'photo', label: 'Photo', icon: eventIcons.photo.icon },
+    { value: 'sync', label: 'Action sync', icon: eventIcons.sync.icon },
+    { value: 'game', label: 'Jeu', icon: eventIcons.game.icon },
+    { value: 'confession', label: 'Confession', icon: eventIcons.confession.icon }
   ];
+
+  const renderLevelSelectItem = (level: number) => (
+    <SelectItem key={level} value={level.toString()}>
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-0.5">
+          {Array.from({ length: level }).map((_, i) => (
+            <img key={i} src={levelIcon} alt="" className="w-4 h-4 object-contain" />
+          ))}
+        </div>
+        <span>{levelLabels[level]}</span>
+      </div>
+    </SelectItem>
+  );
 
   if (loading) {
     return (
@@ -763,15 +768,11 @@ const Questions = () => {
               <CardContent className="space-y-4">
                 <div className="flex gap-4 items-center">
                   <Select value={selectedLevel} onValueChange={setSelectedLevel}>
-                    <SelectTrigger className="w-64 border-rose-300">
+                    <SelectTrigger className="w-80 border-rose-300">
                       <SelectValue placeholder="Niveau" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5].map(level => (
-                        <SelectItem key={level} value={level.toString()}>
-                          {levelLabels[level]}
-                        </SelectItem>
-                      ))}
+                      {[1, 2, 3, 4, 5].map(renderLevelSelectItem)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -886,7 +887,10 @@ const Questions = () => {
                     <SelectContent>
                       {typeOptions.map(opt => (
                         <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
+                          <div className="flex items-center gap-2">
+                            <img src={opt.icon} alt="" className="w-5 h-5 object-contain" />
+                            <span>{opt.label}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -900,11 +904,7 @@ const Questions = () => {
                       <SelectValue placeholder="Niveau" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5].map(level => (
-                        <SelectItem key={level} value={level.toString()}>
-                          {levelLabels[level]}
-                        </SelectItem>
-                      ))}
+                      {[1, 2, 3, 4, 5].map(renderLevelSelectItem)}
                     </SelectContent>
                   </Select>
 
@@ -994,7 +994,6 @@ const Questions = () => {
                               handleCancelEdit={handleEventCancelEdit}
                               handleDelete={handleEventDelete}
                               levelLabels={levelLabels}
-                              typeLabels={typeLabels}
                             />
                           ))}
                         </SortableContext>
