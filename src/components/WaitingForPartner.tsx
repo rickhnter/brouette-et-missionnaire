@@ -64,10 +64,9 @@ export const WaitingForPartner = ({ partnerName, onShowHistory, onLogout }: Wait
             </div>
           </div>
           
-          <div className="flex items-center justify-center gap-2 text-rose-600">
-            <TypingDots />
-            <span className="text-sm italic ml-2">En attente de sa réponse...</span>
-          </div>
+          <p className="text-sm text-rose-600">
+            En attente de sa réponse...
+          </p>
           
           <p className="text-xs text-rose-400">
             Rafraîchissement automatique toutes les 5 secondes
