@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { GameEvent } from '@/hooks/useGameEvents';
 import { Loader2, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { eventIcons } from './eventIcons';
+import { EventCardLayout } from './EventCardLayout';
 
 interface PromiseEventProps {
   event: GameEvent;
@@ -44,125 +44,90 @@ export const PromiseEvent: React.FC<PromiseEventProps> = ({
   // Reveal state
   if (showReveal) {
     return (
-      <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
-        <CardHeader className="text-center pb-2">
-          <div className="flex justify-center mb-3">
-            <div className="bg-gradient-to-r from-violet-400 to-purple-500 rounded-full p-3 shadow-lg">
-              <img src={promiseIcon.icon} alt="" className="w-6 h-6 object-contain" />
-            </div>
-          </div>
-          <CardTitle className="text-xl font-serif text-rose-800">{event.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-muted-foreground text-center text-sm mb-4">{event.description}</p>
-          
-          <div className="space-y-4">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-violet-50/80 rounded-xl p-4 border border-violet-100"
-            >
-              <p className="text-sm font-medium text-violet-600 mb-1">{playerName} promet :</p>
-              <p className="text-foreground italic">"{playerResponse}"</p>
-            </motion.div>
-
-            <div className="flex justify-center">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.3, type: 'spring' }}
-              >
-                <Heart className="h-6 w-6 text-violet-500 fill-violet-500" />
-              </motion.div>
-            </div>
-
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="bg-violet-50/80 rounded-xl p-4 border border-violet-100"
-            >
-              <p className="text-sm font-medium text-violet-600 mb-1">{partnerName} promet :</p>
-              <p className="text-foreground italic">"{partnerResponse}"</p>
-            </motion.div>
-          </div>
-
-          <Button 
-            onClick={onComplete} 
-            className="w-full mt-4 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+      <EventCardLayout icon={promiseIcon.icon} title={event.title} colorTheme="violet">
+        <p className="text-muted-foreground text-center text-sm mb-4">{event.description}</p>
+        
+        <div className="space-y-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-violet-50/80 rounded-2xl p-4 border border-violet-200"
           >
-            Continuer
-          </Button>
-        </CardContent>
-      </Card>
+            <p className="text-sm font-medium text-violet-600 mb-1">{playerName} promet :</p>
+            <p className="text-foreground italic">"{playerResponse}"</p>
+          </motion.div>
+
+          <div className="flex justify-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.3, type: 'spring' }}
+            >
+              <Heart className="h-6 w-6 text-violet-500 fill-violet-500" />
+            </motion.div>
+          </div>
+
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-violet-50/80 rounded-2xl p-4 border border-violet-200"
+          >
+            <p className="text-sm font-medium text-violet-600 mb-1">{partnerName} promet :</p>
+            <p className="text-foreground italic">"{partnerResponse}"</p>
+          </motion.div>
+        </div>
+
+        <Button 
+          onClick={onComplete} 
+          className="w-full mt-4 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 rounded-xl h-12"
+        >
+          Continuer
+        </Button>
+      </EventCardLayout>
     );
   }
 
   // Waiting state
   if (isWaiting || hasSubmitted) {
     return (
-      <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
-        <CardHeader className="text-center pb-2">
-          <div className="flex justify-center mb-3">
-            <div className="bg-gradient-to-r from-violet-400 to-purple-500 rounded-full p-3 shadow-lg">
-              <img src={promiseIcon.icon} alt="" className="w-6 h-6 object-contain" />
-            </div>
+      <EventCardLayout icon={promiseIcon.icon} title={event.title} colorTheme="violet">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="text-center space-y-4 py-4"
+        >
+          <p className="text-muted-foreground">Ta promesse a été enregistrée ! 🤞</p>
+          <div className="flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
           </div>
-          <CardTitle className="text-xl font-serif text-rose-800">{event.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center py-6">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="space-y-4"
-          >
-            <p className="text-muted-foreground">Ta promesse a été enregistrée ! 🤞</p>
-            <div className="flex justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              En attente de la promesse de {partnerName}...
-            </p>
-          </motion.div>
-        </CardContent>
-      </Card>
+          <p className="text-sm text-muted-foreground">
+            En attente de la promesse de {partnerName}...
+          </p>
+        </motion.div>
+      </EventCardLayout>
     );
   }
 
   // Input state
   return (
-    <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
-      <CardHeader className="text-center pb-2">
-        <div className="flex justify-center mb-3">
-          <motion.div 
-            className="bg-gradient-to-r from-violet-400 to-purple-500 rounded-full p-4 shadow-lg"
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            transition={{ repeat: Infinity, repeatType: 'reverse', duration: 1 }}
-          >
-            <img src={promiseIcon.icon} alt="" className="w-8 h-8 object-contain" />
-          </motion.div>
-        </div>
-        <CardTitle className="text-xl font-serif text-rose-800">{event.title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-muted-foreground text-center">{event.description}</p>
+    <EventCardLayout icon={promiseIcon.icon} title={event.title} colorTheme="violet">
+      <p className="text-muted-foreground text-center mb-4">{event.description}</p>
 
-        <Textarea
-          value={promise}
-          onChange={(e) => setPromise(e.target.value)}
-          placeholder="Je promets de..."
-          className="min-h-[120px] bg-white/80 border-violet-200 focus:border-violet-400 focus:ring-violet-400"
-        />
+      <Textarea
+        value={promise}
+        onChange={(e) => setPromise(e.target.value)}
+        placeholder="Je promets de..."
+        className="min-h-[120px] bg-white/80 border-violet-200 focus:border-violet-400 focus:ring-violet-400 rounded-xl"
+      />
 
-        <Button 
-          onClick={handleSubmit} 
-          className="w-full bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
-          disabled={!promise.trim()}
-        >
-          Je promets 🤞
-        </Button>
-      </CardContent>
-    </Card>
+      <Button 
+        onClick={handleSubmit} 
+        className="w-full mt-4 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 rounded-xl h-12"
+        disabled={!promise.trim()}
+      >
+        Je promets 🤞
+      </Button>
+    </EventCardLayout>
   );
 };
