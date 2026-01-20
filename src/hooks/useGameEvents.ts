@@ -122,17 +122,41 @@ export const useGameEvents = (sessionId: string | null) => {
     return Math.random() < EVENT_TRIGGER_PROBABILITY;
   }, []);
 
-  // Get a random event for the current level
-  const getRandomEvent = useCallback((level: number): GameEvent | null => {
+  // Get a random event for the current level with type balancing
+  const getRandomEvent = useCallback((level: number, forcedType?: string): GameEvent | null => {
     // Filter events by level (can use events from current level or below)
-    const eligibleEvents = events.filter(
+    let eligibleEvents = events.filter(
       e => e.level <= level && !usedEventIds.current.has(e.id)
     );
+
+    // If a specific type is forced, filter to that type
+    if (forcedType) {
+      const typedEvents = eligibleEvents.filter(e => e.type === forcedType);
+      if (typedEvents.length > 0) {
+        eligibleEvents = typedEvents;
+      }
+    } else {
+      // Prioritize underrepresented types (game events specifically)
+      const gameEvents = eligibleEvents.filter(e => e.type === 'game');
+      // 50% chance to pick a game event if available and not all used
+      if (gameEvents.length > 0 && Math.random() < 0.5) {
+        eligibleEvents = gameEvents;
+      }
+    }
 
     if (eligibleEvents.length === 0) {
       // Reset used events if all have been used
       usedEventIds.current.clear();
-      const allEligible = events.filter(e => e.level <= level);
+      let allEligible = events.filter(e => e.level <= level);
+      
+      // Apply same filtering for forced type
+      if (forcedType) {
+        const typedEvents = allEligible.filter(e => e.type === forcedType);
+        if (typedEvents.length > 0) {
+          allEligible = typedEvents;
+        }
+      }
+      
       if (allEligible.length === 0) return null;
       
       const randomIndex = Math.floor(Math.random() * allEligible.length);

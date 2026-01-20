@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { GameEvent } from '@/hooks/useGameEvents';
 import { Loader2, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { eventIcons } from './eventIcons';
+import { EventCardLayout } from './EventCardLayout';
 
 interface ConfessionEventProps {
   event: GameEvent;
@@ -44,125 +44,90 @@ export const ConfessionEvent: React.FC<ConfessionEventProps> = ({
   // Reveal state
   if (showReveal) {
     return (
-      <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
-        <CardHeader className="text-center pb-2">
-          <div className="flex justify-center mb-3">
-            <div className="bg-gradient-to-r from-red-400 to-rose-500 rounded-full p-3 shadow-lg">
-              <img src={confessionIcon.icon} alt="" className="w-6 h-6 object-contain" />
-            </div>
-          </div>
-          <CardTitle className="text-xl font-serif text-rose-800">{event.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-muted-foreground text-center text-sm mb-4">{event.description}</p>
-          
-          <div className="space-y-4">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-red-50/80 rounded-xl p-4 border border-red-100"
-            >
-              <p className="text-sm font-medium text-red-600 mb-1">{playerName} confesse :</p>
-              <p className="text-foreground italic">"{playerResponse}"</p>
-            </motion.div>
-
-            <div className="flex justify-center">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.3, type: 'spring' }}
-              >
-                <Heart className="h-6 w-6 text-red-500 fill-red-500" />
-              </motion.div>
-            </div>
-
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="bg-red-50/80 rounded-xl p-4 border border-red-100"
-            >
-              <p className="text-sm font-medium text-red-600 mb-1">{partnerName} confesse :</p>
-              <p className="text-foreground italic">"{partnerResponse}"</p>
-            </motion.div>
-          </div>
-
-          <Button 
-            onClick={onComplete} 
-            className="w-full mt-4 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600"
+      <EventCardLayout icon={confessionIcon.icon} title={event.title} colorTheme="red">
+        <p className="text-muted-foreground text-center text-sm mb-4">{event.description}</p>
+        
+        <div className="space-y-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-red-50/80 rounded-2xl p-4 border border-red-200"
           >
-            Continuer
-          </Button>
-        </CardContent>
-      </Card>
+            <p className="text-sm font-medium text-red-600 mb-1">{playerName} confesse :</p>
+            <p className="text-foreground italic">"{playerResponse}"</p>
+          </motion.div>
+
+          <div className="flex justify-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.3, type: 'spring' }}
+            >
+              <Heart className="h-6 w-6 text-red-500 fill-red-500" />
+            </motion.div>
+          </div>
+
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-red-50/80 rounded-2xl p-4 border border-red-200"
+          >
+            <p className="text-sm font-medium text-red-600 mb-1">{partnerName} confesse :</p>
+            <p className="text-foreground italic">"{partnerResponse}"</p>
+          </motion.div>
+        </div>
+
+        <Button 
+          onClick={onComplete} 
+          className="w-full mt-4 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-xl h-12"
+        >
+          Continuer
+        </Button>
+      </EventCardLayout>
     );
   }
 
   // Waiting state
   if (isWaiting || hasSubmitted) {
     return (
-      <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
-        <CardHeader className="text-center pb-2">
-          <div className="flex justify-center mb-3">
-            <div className="bg-gradient-to-r from-red-400 to-rose-500 rounded-full p-3 shadow-lg">
-              <img src={confessionIcon.icon} alt="" className="w-6 h-6 object-contain" />
-            </div>
+      <EventCardLayout icon={confessionIcon.icon} title={event.title} colorTheme="red">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="text-center space-y-4 py-4"
+        >
+          <p className="text-muted-foreground">Ta confession a été enregistrée ! 💋</p>
+          <div className="flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-red-500" />
           </div>
-          <CardTitle className="text-xl font-serif text-rose-800">{event.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center py-6">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="space-y-4"
-          >
-            <p className="text-muted-foreground">Ta confession a été enregistrée ! 💋</p>
-            <div className="flex justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-red-500" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              En attente de la confession de {partnerName}...
-            </p>
-          </motion.div>
-        </CardContent>
-      </Card>
+          <p className="text-sm text-muted-foreground">
+            En attente de la confession de {partnerName}...
+          </p>
+        </motion.div>
+      </EventCardLayout>
     );
   }
 
   // Input state
   return (
-    <Card className="bg-white/90 backdrop-blur-sm border-rose-200 shadow-xl">
-      <CardHeader className="text-center pb-2">
-        <div className="flex justify-center mb-3">
-          <motion.div 
-            className="bg-gradient-to-r from-red-400 to-rose-500 rounded-full p-4 shadow-lg"
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            transition={{ repeat: Infinity, repeatType: 'reverse', duration: 1 }}
-          >
-            <img src={confessionIcon.icon} alt="" className="w-8 h-8 object-contain" />
-          </motion.div>
-        </div>
-        <CardTitle className="text-xl font-serif text-rose-800">{event.title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-muted-foreground text-center">{event.description}</p>
+    <EventCardLayout icon={confessionIcon.icon} title={event.title} colorTheme="red">
+      <p className="text-muted-foreground text-center mb-4">{event.description}</p>
 
-        <Textarea
-          value={confession}
-          onChange={(e) => setConfession(e.target.value)}
-          placeholder="Ma confession..."
-          className="min-h-[120px] bg-white/80 border-red-200 focus:border-red-400 focus:ring-red-400"
-        />
+      <Textarea
+        value={confession}
+        onChange={(e) => setConfession(e.target.value)}
+        placeholder="Ma confession..."
+        className="min-h-[120px] bg-white/80 border-red-200 focus:border-red-400 focus:ring-red-400 rounded-xl"
+      />
 
-        <Button 
-          onClick={handleSubmit} 
-          className="w-full bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600"
-          disabled={!confession.trim()}
-        >
-          Je confesse 💋
-        </Button>
-      </CardContent>
-    </Card>
+      <Button 
+        onClick={handleSubmit} 
+        className="w-full mt-4 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-xl h-12"
+        disabled={!confession.trim()}
+      >
+        Je confesse 💋
+      </Button>
+    </EventCardLayout>
   );
 };

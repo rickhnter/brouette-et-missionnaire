@@ -6,6 +6,7 @@ import { PhotoEvent } from './PhotoEvent';
 import { SyncEvent } from './SyncEvent';
 import { GameEventComponent } from './GameEvent';
 import { ConfessionEvent } from './ConfessionEvent';
+import { AnimatedEventBackground } from './AnimatedEventBackground';
 import { motion } from 'framer-motion';
 
 interface EventScreenProps {
@@ -20,6 +21,18 @@ interface EventScreenProps {
   showReveal?: boolean;
 }
 
+const getColorTheme = (eventType: string): 'rose' | 'violet' | 'cyan' | 'blue' | 'orange' | 'red' => {
+  switch (eventType) {
+    case 'message': return 'rose';
+    case 'promise': return 'violet';
+    case 'photo': return 'cyan';
+    case 'sync': return 'blue';
+    case 'game': return 'orange';
+    case 'confession': return 'red';
+    default: return 'rose';
+  }
+};
+
 export const EventScreen: React.FC<EventScreenProps> = ({
   event,
   playerName,
@@ -31,6 +44,8 @@ export const EventScreen: React.FC<EventScreenProps> = ({
   partnerResponse,
   showReveal = false,
 }) => {
+  const colorTheme = getColorTheme(event.type);
+
   const renderEventContent = () => {
     const commonProps = {
       event,
@@ -63,22 +78,15 @@ export const EventScreen: React.FC<EventScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex flex-col items-center justify-center p-4">
+    <AnimatedEventBackground colorTheme={colorTheme}>
       <motion.div
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 200, damping: 20 }}
         className="w-full max-w-md"
       >
-        {/* Event Content - Badge is now integrated inside each event component */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          {renderEventContent()}
-        </motion.div>
+        {renderEventContent()}
       </motion.div>
-    </div>
+    </AnimatedEventBackground>
   );
 };
