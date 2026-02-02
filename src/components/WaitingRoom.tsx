@@ -1,36 +1,59 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Share2, Check } from "lucide-react";
+import { Loader2, Share2, Check, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface WaitingRoomProps {
   playerName: string;
   partnerName?: string;
+  roomCode?: string;
+  roomName?: string;
 }
 
-export const WaitingRoom = ({ playerName, partnerName }: WaitingRoomProps) => {
+export const WaitingRoom = ({ playerName, partnerName, roomCode, roomName }: WaitingRoomProps) => {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
-  const partner = playerName === "Pierrick" ? "Daisy" : "Pierrick";
-  const shareUrl = `https://brouette-ou-missionnaire.lovable.app/?player=${partner}`;
-
-  const handleShare = async () => {
+  const handleCopyCode = async () => {
+    if (!roomCode) return;
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(roomCode);
       setCopied(true);
       toast({
-        title: "Lien copié !",
-        description: `Envoie ce lien à ${partner} pour commencer 💕`,
+        title: "Code copié !",
+        description: "Partage ce code à ton partenaire 💕",
       });
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       toast({
         title: "Erreur",
-        description: "Impossible de copier le lien",
+        description: "Impossible de copier le code",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleShare = async () => {
+    if (!roomCode) return;
+    const shareData = {
+      title: 'Brouette & Missionnaire',
+      text: `Rejoins-moi pour jouer ! Code: ${roomCode}`,
+      url: `${window.location.origin}/?code=${roomCode}`
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+        toast({
+          title: "Lien copié !",
+          description: "Partage ce lien à ton partenaire 💕",
+        });
+      }
+    } catch (err) {
+      // User cancelled sharing
     }
   };
 
@@ -50,14 +73,19 @@ export const WaitingRoom = ({ playerName, partnerName }: WaitingRoomProps) => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6 text-center">
+          {roomName && (
+            <p className="text-lg font-medium text-rose-700">{roomName}</p>
+          )}
+          
           <div className="flex items-center justify-center gap-3 text-rose-600">
             <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="text-lg">En attente de {partner}...</span>
+            <span className="text-lg">En attente de ton partenaire...</span>
           </div>
 
           <div className="text-sm text-rose-500 italic">
             L'aventure commence quand vous serez tous les deux connectés
           </div>
+          
           <div className="pt-2">
             <div className="w-full h-2 bg-rose-100 rounded-full overflow-hidden">
               <div
@@ -67,24 +95,33 @@ export const WaitingRoom = ({ playerName, partnerName }: WaitingRoomProps) => {
             </div>
           </div>
 
-          <div className="bg-rose-50 rounded-lg p-4 space-y-3">
-            <p className="text-sm text-rose-600">Partage ce lien avec {partner} :</p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                readOnly
-                value={shareUrl}
-                className="flex-1 text-xs bg-white border border-rose-200 rounded px-2 py-2 text-rose-700 truncate"
-              />
+          {roomCode && (
+            <div className="bg-rose-50 rounded-lg p-4 space-y-3">
+              <p className="text-sm text-rose-600">Code de la room :</p>
+              <div className="flex items-center justify-center gap-2">
+                <div className="bg-white border-2 border-rose-300 rounded-lg px-6 py-3">
+                  <span className="text-3xl font-mono font-bold text-rose-700 tracking-widest">
+                    {roomCode}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopyCode}
+                  className="border-rose-300 text-rose-600 hover:bg-rose-50"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
               <Button
                 onClick={handleShare}
-                size="sm"
-                className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600"
+                className="w-full bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600"
               >
-                {copied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                <Share2 className="w-4 h-4 mr-2" />
+                Partager le code
               </Button>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>
