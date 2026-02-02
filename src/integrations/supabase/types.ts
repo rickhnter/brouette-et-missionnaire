@@ -158,6 +158,8 @@ export type Database = {
           player1_name: string
           player2_connected: boolean | null
           player2_name: string | null
+          room_code: string
+          room_name: string | null
           status: string | null
           updated_at: string
         }
@@ -172,6 +174,8 @@ export type Database = {
           player1_name: string
           player2_connected?: boolean | null
           player2_name?: string | null
+          room_code: string
+          room_name?: string | null
           status?: string | null
           updated_at?: string
         }
@@ -186,6 +190,8 @@ export type Database = {
           player1_name?: string
           player2_connected?: boolean | null
           player2_name?: string | null
+          room_code?: string
+          room_name?: string | null
           status?: string | null
           updated_at?: string
         }

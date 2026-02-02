@@ -88,12 +88,23 @@ export const useGameSession = (playerName: string | null) => {
         return;
       }
 
-      // 3. Créer une nouvelle session
+      // 3. Créer une nouvelle session - should not happen anymore with room system
+      // This is a fallback that generates a room_code
+      const generateRoomCode = (): string => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = '';
+        for (let i = 0; i < 6; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+      };
+
       const { data: newSession, error: createError } = await supabase
         .from('game_sessions')
         .insert({
           player1_name: playerName,
-          player1_connected: true
+          player1_connected: true,
+          room_code: generateRoomCode()
         })
         .select()
         .single();

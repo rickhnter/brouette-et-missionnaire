@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { LoginScreen } from '@/components/LoginScreen';
+import { RoomHomeScreen } from '@/components/RoomHomeScreen';
+import { CreateRoomScreen } from '@/components/CreateRoomScreen';
+import { JoinRoomScreen } from '@/components/JoinRoomScreen';
+import { MyRoomsScreen } from '@/components/MyRoomsScreen';
 import { WaitingRoom } from '@/components/WaitingRoom';
 import { QuestionScreen } from '@/components/QuestionScreen';
 import { WaitingForPartner } from '@/components/WaitingForPartner';
@@ -11,13 +14,15 @@ import { EndScreen } from '@/components/EndScreen';
 import { EventScreen } from '@/components/events/EventScreen';
 import { PartnerEventNotification } from '@/components/events/PartnerEventNotification';
 import { LevelUpAnimation } from '@/components/LevelUpAnimation';
-import { useGameSession } from '@/hooks/useGameSession';
+import { useRoom, Room } from '@/hooks/useRoom';
 import { useQuestions } from '@/hooks/useQuestions';
 import { useAnswers } from '@/hooks/useAnswers';
 import { useGameEvents, GameEvent } from '@/hooks/useGameEvents';
+import { supabase } from '@/integrations/supabase/client';
+
+type RoomState = 'home' | 'create' | 'join' | 'my-rooms';
 
 type GameState =
-  | 'login'
   | 'waiting'
   | 'question'
   | 'waiting-partner'
@@ -39,29 +44,45 @@ interface RevealData {
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const playerFromUrl = searchParams.get('player');
+  const codeFromUrl = searchParams.get('code');
   
+  // Room management
+  const [roomState, setRoomState] = useState<RoomState | null>(codeFromUrl ? 'join' : null);
   const [playerName, setPlayerName] = useState<string | null>(null);
-  const [gameState, setGameState] = useState<GameState>('login');
-  const [previousState, setPreviousState] = useState<GameState>('login');
+  const [hasExistingRooms, setHasExistingRooms] = useState(false);
+  
+  // Game state
+  const [gameState, setGameState] = useState<GameState | null>(null);
+  const [previousState, setPreviousState] = useState<GameState>('waiting');
   const [revealData, setRevealData] = useState<RevealData | null>(null);
   const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null);
   const [partnerEvent, setPartnerEvent] = useState<GameEvent | null>(null);
   const [partnerEventResponse, setPartnerEventResponse] = useState<string | null>(null);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [levelUpLevel, setLevelUpLevel] = useState<number>(1);
-  const previousLevelRef = useRef<number | null>(null);
-  // Track answered questions to persist event trigger logic across page reloads
   const answeredQuestionsCount = useRef(0);
   const answeredQuestionsInitialized = useRef(false);
-  const { session, loading, findOrCreateSession, startGame, updateSession } = useGameSession(playerName);
+
+  const { 
+    loading: roomLoading, 
+    error: roomError, 
+    currentRoom, 
+    setCurrentRoom,
+    createRoom, 
+    joinRoom, 
+    getMyRooms, 
+    resumeRoom,
+    leaveRoom,
+    getLocalRoomEntries 
+  } = useRoom();
+
   const { questions, getQuestionById, getNextQuestion, loading: questionsLoading } = useQuestions();
   const { 
     answers,
     submitAnswer, 
     getPlayerAnswer, 
     getPartnerAnswer 
-  } = useAnswers(session?.id || null, session?.current_question_id || null);
+  } = useAnswers(currentRoom?.id || null, currentRoom?.current_question_id || null);
 
   const {
     events,
@@ -74,71 +95,96 @@ const Index = () => {
     hasPartnerResponded,
     resetResponses,
     fetchResponses
-  } = useGameEvents(session?.id || null);
+  } = useGameEvents(currentRoom?.id || null);
 
   const playerAnswered = playerName ? answers.some(a => a.player_name === playerName) : false;
   const partnerAnswered = playerName ? answers.some(a => a.player_name !== playerName) : false;
 
-  const currentQuestion = session?.current_question_id 
-    ? getQuestionById(session.current_question_id) 
+  const currentQuestion = currentRoom?.current_question_id 
+    ? getQuestionById(currentRoom.current_question_id) 
     : null;
 
-  const partnerName = session?.player1_name === playerName 
-    ? session?.player2_name 
-    : session?.player1_name;
+  const partnerName = currentRoom?.player1_name === playerName 
+    ? currentRoom?.player2_name 
+    : currentRoom?.player1_name;
 
-  const handleLogin = (name: string) => {
-    setPlayerName(name);
-  };
-
+  // Check for existing rooms on mount
   useEffect(() => {
-    if (playerName && !session) {
-      findOrCreateSession();
-    }
-  }, [playerName, session, findOrCreateSession]);
+    const checkExistingRooms = () => {
+      const entries = getLocalRoomEntries();
+      setHasExistingRooms(entries.length > 0);
+    };
+    checkExistingRooms();
+  }, [getLocalRoomEntries]);
 
+  // Room realtime subscription
   useEffect(() => {
-    if (!session) return;
+    if (!currentRoom?.id) return;
 
-    if (gameState === 'login' && playerName) {
+    const channel = supabase
+      .channel(`room-${currentRoom.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'game_sessions',
+          filter: `id=eq.${currentRoom.id}`
+        },
+        (payload) => {
+          if (payload.new) {
+            setCurrentRoom(payload.new as Room);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentRoom?.id, setCurrentRoom]);
+
+  // Transition from room state to game state when room is set
+  useEffect(() => {
+    if (currentRoom && playerName && !gameState) {
       setGameState('waiting');
+      setRoomState(null);
     }
+  }, [currentRoom, playerName, gameState]);
 
-    // Quand les deux joueurs sont connectés, démarrer automatiquement
-    if (session.player1_connected && session.player2_connected) {
-      if (gameState === 'waiting' && !session.current_question_id) {
-        startGame();
-      }
-    }
-
-    // Si une question est déjà sélectionnée et on est en waiting, restaurer l'état approprié
-    if (session.current_question_id && gameState === 'waiting') {
-      // Déterminer le bon état en fonction des réponses existantes
-      if (playerAnswered && partnerAnswered) {
-        setGameState('reveal');
-      } else if (playerAnswered && !partnerAnswered) {
-        setGameState('waiting-partner');
-      } else {
-        setGameState('question');
-      }
-    }
-  }, [session, gameState, playerName, startGame, playerAnswered, partnerAnswered]);
-
-  // Détecter quand le partenaire a un événement individuel en cours
+  // Auto-start game when both players connected
   useEffect(() => {
-    if (!session || !playerName || !events.length) return;
+    if (!currentRoom || gameState !== 'waiting') return;
+
+    if (currentRoom.player1_connected && currentRoom.player2_connected) {
+      if (!currentRoom.current_question_id) {
+        startGame();
+      } else {
+        // Restore appropriate state based on answers
+        if (playerAnswered && partnerAnswered) {
+          setGameState('reveal');
+        } else if (playerAnswered && !partnerAnswered) {
+          setGameState('waiting-partner');
+        } else {
+          setGameState('question');
+        }
+      }
+    }
+  }, [currentRoom, gameState, playerAnswered, partnerAnswered]);
+
+  // Partner event detection
+  useEffect(() => {
+    if (!currentRoom || !playerName || !events.length) return;
     
-    const sessionAny = session as any;
-    const currentEventId = sessionAny.current_event_id;
-    const eventPlayerName = sessionAny.event_player_name;
+    const roomAny = currentRoom as any;
+    const currentEventId = roomAny.current_event_id;
+    const eventPlayerName = roomAny.event_player_name;
     
-    // Si un événement est en cours et ce n'est pas pour ce joueur
     if (currentEventId && eventPlayerName && eventPlayerName !== playerName) {
       const event = events.find(e => e.id === currentEventId);
       if (event && !event.requires_both) {
         setPartnerEvent(event);
         
-        // Vérifier si le partenaire a déjà répondu
         fetchResponses(currentEventId).then(() => {
           const partnerResp = getPartnerResponse(currentEventId, playerName);
           if (partnerResp?.completed) {
@@ -150,14 +196,13 @@ const Index = () => {
         });
       }
     } else if (!currentEventId && (gameState === 'partner-event-waiting' || gameState === 'partner-event-notification')) {
-      // L'événement est terminé, retourner à la question
       setPartnerEvent(null);
       setPartnerEventResponse(null);
       setGameState('question');
     }
-  }, [session, playerName, events, gameState, fetchResponses, getPartnerResponse]);
+  }, [currentRoom, playerName, events, gameState, fetchResponses, getPartnerResponse]);
 
-  // Surveiller les réponses du partenaire pendant partner-event-waiting
+  // Partner event polling
   useEffect(() => {
     if (gameState !== 'partner-event-waiting' || !partnerEvent || !playerName) return;
 
@@ -174,53 +219,47 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [gameState, partnerEvent, playerName, fetchResponses, getPartnerResponse]);
 
-  // Initialiser le compteur de questions répondues à partir de la base de données
+  // Initialize answered count
   useEffect(() => {
     const initializeAnsweredCount = async () => {
-      if (!session?.id || answeredQuestionsInitialized.current) return;
+      if (!currentRoom?.id || answeredQuestionsInitialized.current) return;
       
-      const { supabase } = await import('@/integrations/supabase/client');
       const { data, error } = await supabase
         .from('answers')
         .select('question_id')
-        .eq('session_id', session.id);
+        .eq('session_id', currentRoom.id);
       
       if (!error && data) {
-        // Compter les questions uniques répondues (chaque question a 2 réponses)
         const uniqueQuestions = new Set(data.map(a => a.question_id));
         answeredQuestionsCount.current = uniqueQuestions.size;
         answeredQuestionsInitialized.current = true;
-        console.log('Initialized answered questions count:', answeredQuestionsCount.current);
       }
     };
     
     initializeAnsweredCount();
-  }, [session?.id]);
+  }, [currentRoom?.id]);
 
-  // Réinitialiser l'état quand la question change
+  // Question change detection
   const [lastQuestionId, setLastQuestionId] = useState<string | null>(null);
   
   useEffect(() => {
-    if (session?.current_question_id && session.current_question_id !== lastQuestionId) {
-      setLastQuestionId(session.current_question_id);
-      // Quand la question change via la session (sync avec l'autre joueur), repasser en mode question
+    if (currentRoom?.current_question_id && currentRoom.current_question_id !== lastQuestionId) {
+      setLastQuestionId(currentRoom.current_question_id);
       if (gameState === 'reveal' || gameState === 'waiting-partner') {
         setGameState('question');
       }
     }
-  }, [session?.current_question_id, lastQuestionId, gameState]);
+  }, [currentRoom?.current_question_id, lastQuestionId, gameState]);
 
+  // Answer state transitions
   useEffect(() => {
-    if (!session?.current_question_id || !playerName) return;
+    if (!currentRoom?.current_question_id || !playerName) return;
 
-    // Seulement changer d'état si on est en mode question
     if (gameState === 'question' && playerAnswered && !partnerAnswered) {
       setGameState('waiting-partner');
     }
 
-    // Les deux ont répondu : passer à la révélation et capturer les données
     if ((gameState === 'waiting-partner' || gameState === 'question') && playerAnswered && partnerAnswered) {
-      // Capturer les données de révélation avant de changer d'état
       const playerAns = getPlayerAnswer(playerName);
       const partnerAns = getPartnerAnswer(playerName);
       
@@ -235,8 +274,77 @@ const Index = () => {
       
       setGameState('reveal');
     }
-  }, [playerAnswered, partnerAnswered, playerName, session?.current_question_id, gameState, currentQuestion, getPlayerAnswer, getPartnerAnswer]);
+  }, [playerAnswered, partnerAnswered, playerName, currentRoom?.current_question_id, gameState, currentQuestion, getPlayerAnswer, getPartnerAnswer]);
 
+  // Event waiting state
+  useEffect(() => {
+    if (gameState !== 'event-waiting' || !currentEvent || !playerName) return;
+
+    const playerDone = hasPlayerResponded(currentEvent.id, playerName);
+    const partnerDone = hasPartnerResponded(currentEvent.id, playerName);
+
+    if (playerDone && partnerDone) {
+      setGameState('event-reveal');
+    }
+  }, [gameState, currentEvent, playerName, hasPlayerResponded, hasPartnerResponded]);
+
+  const startGame = async () => {
+    if (!currentRoom?.id) return;
+
+    const { data: questionsData, error: questionsError } = await supabase
+      .from('questions')
+      .select('id')
+      .eq('level', 1)
+      .order('sort_order', { ascending: true })
+      .limit(1);
+
+    if (questionsError) return;
+
+    await supabase
+      .from('game_sessions')
+      .update({
+        current_level: 1,
+        current_question_id: questionsData?.[0]?.id || null,
+        status: 'playing'
+      })
+      .eq('id', currentRoom.id);
+    
+    setGameState('question');
+  };
+
+  const updateSession = async (updates: Partial<Room>) => {
+    if (!currentRoom?.id) return;
+    await supabase
+      .from('game_sessions')
+      .update(updates)
+      .eq('id', currentRoom.id);
+  };
+
+  // Room handlers
+  const handleCreateRoom = async (name: string, roomName?: string) => {
+    const room = await createRoom(name, roomName);
+    if (room) {
+      setPlayerName(name);
+      setSearchParams({});
+    }
+  };
+
+  const handleJoinRoom = async (code: string, name: string) => {
+    const room = await joinRoom(code, name);
+    if (room) {
+      setPlayerName(name);
+      setSearchParams({});
+    }
+  };
+
+  const handleResumeRoom = async (roomId: string, name: string) => {
+    const room = await resumeRoom(roomId, name);
+    if (room) {
+      setPlayerName(name);
+    }
+  };
+
+  // Game handlers
   const handleAnswer = async (answer: string) => {
     if (!playerName) return;
     await submitAnswer(playerName, answer, false);
@@ -248,24 +356,19 @@ const Index = () => {
   };
 
   const handleNextQuestion = async () => {
-    if (!session?.current_level || !session?.current_question_id) return;
+    if (!currentRoom?.current_level || !currentRoom?.current_question_id) return;
 
-    if (!playerAnswered || !partnerAnswered) {
-      console.warn('Les deux joueurs n\'ont pas encore répondu à cette question');
-      return;
-    }
+    if (!playerAnswered || !partnerAnswered) return;
 
     setRevealData(null);
     answeredQuestionsCount.current += 1;
 
-    // Check if we should trigger an event (~25% chance, not on first 2 questions)
     if (answeredQuestionsCount.current >= 2 && shouldTriggerEvent(answeredQuestionsCount.current)) {
-      const event = getRandomEvent(session.current_level);
+      const event = getRandomEvent(currentRoom.current_level);
       if (event) {
         setCurrentEvent(event);
         resetResponses();
         
-        // Stocker l'événement dans la session pour synchroniser les deux joueurs
         await updateSession({
           current_event_id: event.id,
           event_player_name: playerName
@@ -280,13 +383,12 @@ const Index = () => {
   };
 
   const proceedToNextQuestion = async () => {
-    if (!session?.current_level || !session?.current_question_id) return;
+    if (!currentRoom?.current_level || !currentRoom?.current_question_id) return;
 
-    const next = getNextQuestion(session.current_level, session.current_question_id);
+    const next = getNextQuestion(currentRoom.current_level, currentRoom.current_question_id);
     
     if (next) {
-      // Détecter le changement de niveau
-      const isLevelUp = next.level > session.current_level;
+      const isLevelUp = next.level > currentRoom.current_level;
       
       await updateSession({ 
         current_question_id: next.question.id,
@@ -322,7 +424,6 @@ const Index = () => {
   };
 
   const handleEventComplete = async () => {
-    // Effacer l'événement de la session
     await updateSession({
       current_event_id: null,
       event_player_name: null
@@ -334,7 +435,6 @@ const Index = () => {
   };
 
   const handlePartnerEventContinue = async () => {
-    // Effacer l'événement de la session
     await updateSession({
       current_event_id: null,
       event_player_name: null
@@ -345,20 +445,8 @@ const Index = () => {
     await proceedToNextQuestion();
   };
 
-  // Watch for partner response during events
-  useEffect(() => {
-    if (gameState !== 'event-waiting' || !currentEvent || !playerName) return;
-
-    const playerDone = hasPlayerResponded(currentEvent.id, playerName);
-    const partnerDone = hasPartnerResponded(currentEvent.id, playerName);
-
-    if (playerDone && partnerDone) {
-      setGameState('event-reveal');
-    }
-  }, [gameState, currentEvent, playerName, hasPlayerResponded, hasPartnerResponded]);
-
   const handleShowHistory = () => {
-    setPreviousState(gameState);
+    setPreviousState(gameState || 'waiting');
     setGameState('history');
   };
 
@@ -367,8 +455,12 @@ const Index = () => {
   };
 
   const handleLogout = () => {
+    leaveRoom();
     setPlayerName(null);
-    setGameState('login');
+    setGameState(null);
+    setRoomState(null);
+    answeredQuestionsInitialized.current = false;
+    answeredQuestionsCount.current = 0;
     setSearchParams({});
   };
 
@@ -382,12 +474,58 @@ const Index = () => {
     return <LevelUpAnimation level={levelUpLevel} onComplete={handleLevelUpComplete} />;
   }
 
-  if (gameState === 'login') {
-    const validPlayer = playerFromUrl === 'Pierrick' || playerFromUrl === 'Daisy' ? playerFromUrl : null;
-    return <LoginScreen onLogin={handleLogin} preSelectedPlayer={validPlayer} />;
+  // Room selection screens
+  if (!currentRoom) {
+    if (roomState === 'create') {
+      return (
+        <CreateRoomScreen
+          onBack={() => setRoomState(null)}
+          onCreate={handleCreateRoom}
+          loading={roomLoading}
+          error={roomError}
+        />
+      );
+    }
+
+    if (roomState === 'join') {
+      return (
+        <JoinRoomScreen
+          onBack={() => {
+            setRoomState(null);
+            setSearchParams({});
+          }}
+          onJoin={handleJoinRoom}
+          loading={roomLoading}
+          error={roomError}
+          prefilledCode={codeFromUrl || undefined}
+        />
+      );
+    }
+
+    if (roomState === 'my-rooms') {
+      return (
+        <MyRoomsScreen
+          onBack={() => setRoomState(null)}
+          onResume={handleResumeRoom}
+          getMyRooms={getMyRooms}
+          getLocalRoomEntries={getLocalRoomEntries}
+          loading={roomLoading}
+        />
+      );
+    }
+
+    return (
+      <RoomHomeScreen
+        onCreateRoom={() => setRoomState('create')}
+        onJoinRoom={() => setRoomState('join')}
+        onMyRooms={() => setRoomState('my-rooms')}
+        hasExistingRooms={hasExistingRooms}
+      />
+    );
   }
 
-  if (loading || questionsLoading) {
+  // Loading state
+  if (roomLoading || questionsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center">
         <div className="text-rose-600">Chargement...</div>
@@ -395,7 +533,8 @@ const Index = () => {
     );
   }
 
-  if (gameState === 'history' && session?.id) {
+  // Game states
+  if (gameState === 'history' && currentRoom?.id) {
     return (
       <>
         <GameNavigation 
@@ -403,7 +542,7 @@ const Index = () => {
           onShowHistory={handleShowHistory} 
           onLogout={handleLogout} 
         />
-        <HistoryScreen sessionId={session.id} onBack={handleBackFromHistory} />
+        <HistoryScreen sessionId={currentRoom.id} onBack={handleBackFromHistory} />
       </>
     );
   }
@@ -418,12 +557,13 @@ const Index = () => {
         />
         <WaitingRoom 
           playerName={playerName!} 
-          partnerName={partnerName || undefined} 
+          partnerName={partnerName || undefined}
+          roomCode={currentRoom.room_code}
+          roomName={currentRoom.room_name || undefined}
         />
       </>
     );
   }
-
 
   if (gameState === 'question' && currentQuestion) {
     return (
@@ -457,7 +597,7 @@ const Index = () => {
         />
         <WaitingForPartner 
           partnerName={partnerName}
-          currentLevel={session?.current_level || 1}
+          currentLevel={currentRoom?.current_level || 1}
           playerName={playerName!}
           onShowHistory={handleShowHistory}
           onLogout={handleLogout}
@@ -493,7 +633,6 @@ const Index = () => {
     );
   }
 
-  // Partner event waiting (when partner is performing an individual action)
   if (gameState === 'partner-event-waiting' && partnerEvent && partnerName) {
     return (
       <>
@@ -512,7 +651,6 @@ const Index = () => {
     );
   }
 
-  // Partner event notification (when partner has completed an individual action)
   if (gameState === 'partner-event-notification' && partnerEvent && partnerName) {
     return (
       <>
@@ -548,7 +686,7 @@ const Index = () => {
           playerSkipped={revealData.playerAnswer?.skipped || false}
           partnerSkipped={revealData.partnerAnswer?.skipped || false}
           onNext={handleNextQuestion}
-          currentLevel={session?.current_level || 1}
+          currentLevel={currentRoom?.current_level || 1}
           onShowHistory={handleShowHistory}
           onLogout={handleLogout}
         />
