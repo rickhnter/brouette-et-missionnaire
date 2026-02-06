@@ -108,6 +108,10 @@ const Index = () => {
     ? currentRoom?.player2_name 
     : currentRoom?.player1_name;
 
+  // Extract event fields from room for sync logic
+  const currentEventId = currentRoom?.current_event_id || null;
+  const eventPlayerNameFromRoom = currentRoom?.event_player_name || null;
+
   // Check for existing rooms on mount
   useEffect(() => {
     const checkExistingRooms = () => {
@@ -159,8 +163,8 @@ const Index = () => {
     if (currentRoom.player1_connected && currentRoom.player2_connected) {
       if (!currentRoom.current_question_id) {
         startGame();
-      } else {
-        // Restore appropriate state based on answers
+      } else if (!currentEventId) {
+        // No active event - restore state based on answers
         if (playerAnswered && partnerAnswered) {
           setGameState('reveal');
         } else if (playerAnswered && !partnerAnswered) {
@@ -169,55 +173,100 @@ const Index = () => {
           setGameState('question');
         }
       }
+      // If currentEventId is set, the event detection effect will handle state
     }
-  }, [currentRoom, gameState, playerAnswered, partnerAnswered]);
+  }, [currentRoom, gameState, playerAnswered, partnerAnswered, currentEventId]);
 
-  // Partner event detection
+  // Unified event state management - detects active events and routes to correct screen
   useEffect(() => {
     if (!currentRoom || !playerName || !events.length) return;
+    if (gameState === 'history') return;
     
-    const roomAny = currentRoom as any;
-    const currentEventId = roomAny.current_event_id;
-    const eventPlayerName = roomAny.event_player_name;
-    
-    if (currentEventId && eventPlayerName && eventPlayerName !== playerName) {
+    if (currentEventId) {
       const event = events.find(e => e.id === currentEventId);
-      if (event && !event.requires_both) {
-        setPartnerEvent(event);
+      if (!event) return;
+      
+      if (event.requires_both) {
+        // SYNC EVENT: both players participate
+        setCurrentEvent(event);
+        setPartnerEvent(null);
+        fetchResponses(currentEventId);
         
-        fetchResponses(currentEventId).then(() => {
-          const partnerResp = getPartnerResponse(currentEventId, playerName);
-          if (partnerResp?.completed) {
-            setPartnerEventResponse(partnerResp.response);
-            setGameState('partner-event-notification');
-          } else {
+        if (gameState !== 'event' && gameState !== 'event-waiting' && gameState !== 'event-reveal') {
+          setGameState('event');
+        }
+      } else {
+        // SOLO EVENT
+        if (eventPlayerNameFromRoom === playerName) {
+          // I'm the active player
+          setCurrentEvent(event);
+          setPartnerEvent(null);
+          if (gameState !== 'event') {
+            setGameState('event');
+          }
+        } else {
+          // I'm the partner - watching
+          setPartnerEvent(event);
+          setCurrentEvent(null);
+          fetchResponses(currentEventId);
+          
+          if (gameState !== 'partner-event-waiting' && gameState !== 'partner-event-notification') {
             setGameState('partner-event-waiting');
           }
-        });
+        }
       }
-    } else if (!currentEventId && (gameState === 'partner-event-waiting' || gameState === 'partner-event-notification')) {
+    } else if (
+      gameState === 'event' || 
+      gameState === 'event-waiting' || 
+      gameState === 'event-reveal' || 
+      gameState === 'partner-event-waiting' || 
+      gameState === 'partner-event-notification'
+    ) {
+      // Event was cleared - return to question
+      setCurrentEvent(null);
       setPartnerEvent(null);
       setPartnerEventResponse(null);
       setGameState('question');
     }
-  }, [currentRoom, playerName, events, gameState, fetchResponses, getPartnerResponse]);
+  }, [currentEventId, eventPlayerNameFromRoom, playerName, events, currentRoom]);
 
-  // Partner event polling
+  // Event response polling - periodically checks for partner responses
   useEffect(() => {
-    if (gameState !== 'partner-event-waiting' || !partnerEvent || !playerName) return;
+    if (!currentEventId || !playerName) return;
+    
+    const isPollingState = gameState === 'event' || gameState === 'event-waiting' || 
+      gameState === 'partner-event-waiting';
+    if (!isPollingState) return;
 
-    const checkPartnerResponse = async () => {
-      await fetchResponses(partnerEvent.id);
-      const partnerResp = getPartnerResponse(partnerEvent.id, playerName);
-      if (partnerResp?.completed) {
-        setPartnerEventResponse(partnerResp.response);
-        setGameState('partner-event-notification');
+    const pollResponses = async () => {
+      await fetchResponses(currentEventId);
+      
+      const event = events.find(e => e.id === currentEventId);
+      if (!event) return;
+
+      if (event.requires_both) {
+        const playerDone = hasPlayerResponded(currentEventId, playerName);
+        const partnerDone = hasPartnerResponded(currentEventId, playerName);
+        
+        if (playerDone && partnerDone) {
+          setGameState('event-reveal');
+        } else if (playerDone) {
+          setGameState('event-waiting');
+        }
+      } else if (eventPlayerNameFromRoom !== playerName) {
+        // Solo event: partner side - check if active player completed
+        const partnerResp = getPartnerResponse(currentEventId, playerName);
+        if (partnerResp?.completed) {
+          setPartnerEventResponse(partnerResp.response);
+          setGameState('partner-event-notification');
+        }
       }
     };
 
-    const interval = setInterval(checkPartnerResponse, 2000);
+    pollResponses();
+    const interval = setInterval(pollResponses, 2000);
     return () => clearInterval(interval);
-  }, [gameState, partnerEvent, playerName, fetchResponses, getPartnerResponse]);
+  }, [currentEventId, gameState, playerName, eventPlayerNameFromRoom, events]);
 
   // Initialize answered count
   useEffect(() => {
@@ -245,15 +294,16 @@ const Index = () => {
   useEffect(() => {
     if (currentRoom?.current_question_id && currentRoom.current_question_id !== lastQuestionId) {
       setLastQuestionId(currentRoom.current_question_id);
-      if (gameState === 'reveal' || gameState === 'waiting-partner') {
+      if (!currentEventId && (gameState === 'reveal' || gameState === 'waiting-partner')) {
         setGameState('question');
       }
     }
-  }, [currentRoom?.current_question_id, lastQuestionId, gameState]);
+  }, [currentRoom?.current_question_id, lastQuestionId, gameState, currentEventId]);
 
-  // Answer state transitions
+  // Answer state transitions (blocked during active events)
   useEffect(() => {
     if (!currentRoom?.current_question_id || !playerName) return;
+    if (currentEventId) return; // Block during events
 
     if (gameState === 'question' && playerAnswered && !partnerAnswered) {
       setGameState('waiting-partner');
@@ -274,17 +324,20 @@ const Index = () => {
       
       setGameState('reveal');
     }
-  }, [playerAnswered, partnerAnswered, playerName, currentRoom?.current_question_id, gameState, currentQuestion, getPlayerAnswer, getPartnerAnswer]);
+  }, [playerAnswered, partnerAnswered, playerName, currentRoom?.current_question_id, gameState, currentQuestion, getPlayerAnswer, getPartnerAnswer, currentEventId]);
 
-  // Event waiting state
+  // Sync event response detection from realtime updates
   useEffect(() => {
-    if (gameState !== 'event-waiting' || !currentEvent || !playerName) return;
+    if (gameState !== 'event-waiting' && gameState !== 'event') return;
+    if (!currentEvent?.requires_both || !playerName) return;
 
     const playerDone = hasPlayerResponded(currentEvent.id, playerName);
     const partnerDone = hasPartnerResponded(currentEvent.id, playerName);
 
     if (playerDone && partnerDone) {
       setGameState('event-reveal');
+    } else if (playerDone && !partnerDone) {
+      setGameState('event-waiting');
     }
   }, [gameState, currentEvent, playerName, hasPlayerResponded, hasPartnerResponded]);
 
@@ -357,7 +410,6 @@ const Index = () => {
 
   const handleNextQuestion = async () => {
     if (!currentRoom?.current_level || !currentRoom?.current_question_id) return;
-
     if (!playerAnswered || !partnerAnswered) return;
 
     setRevealData(null);
@@ -369,10 +421,12 @@ const Index = () => {
         setCurrentEvent(event);
         resetResponses();
         
+        // Sync events: event_player_name = null (both participate)
+        // Solo events: event_player_name = triggering player
         await updateSession({
           current_event_id: event.id,
-          event_player_name: playerName
-        } as any);
+          event_player_name: event.requires_both ? null : playerName
+        });
         
         setGameState('event');
         return;
@@ -395,7 +449,7 @@ const Index = () => {
         current_level: next.level,
         current_event_id: null,
         event_player_name: null
-      } as any);
+      });
       
       if (isLevelUp) {
         setLevelUpLevel(next.level);
@@ -418,30 +472,49 @@ const Index = () => {
     await submitResponse(currentEvent.id, playerName, response, true);
     
     if (currentEvent.requires_both) {
+      // Sync event: wait for partner response
       setGameState('event-waiting');
       await fetchResponses(currentEvent.id);
     }
+    // Solo event: stay on event screen, player will click Continue
   };
 
   const handleEventComplete = async () => {
-    await updateSession({
-      current_event_id: null,
-      event_player_name: null
-    } as any);
+    // Guard: only advance if event is still active (prevents double-advance)
+    if (!currentEventId) {
+      setCurrentEvent(null);
+      resetResponses();
+      return;
+    }
     
     setCurrentEvent(null);
     resetResponses();
+    
+    await updateSession({
+      current_event_id: null,
+      event_player_name: null
+    });
+    
     await proceedToNextQuestion();
   };
 
   const handlePartnerEventContinue = async () => {
-    await updateSession({
-      current_event_id: null,
-      event_player_name: null
-    } as any);
+    // Guard: only advance if event is still active (prevents double-advance)
+    if (!currentEventId) {
+      setPartnerEvent(null);
+      setPartnerEventResponse(null);
+      return;
+    }
     
     setPartnerEvent(null);
     setPartnerEventResponse(null);
+    resetResponses();
+    
+    await updateSession({
+      current_event_id: null,
+      event_player_name: null
+    });
+    
     await proceedToNextQuestion();
   };
 
@@ -565,7 +638,7 @@ const Index = () => {
     );
   }
 
-  if (gameState === 'question' && currentQuestion) {
+  if (gameState === 'question' && currentQuestion && !currentEventId) {
     return (
       <>
         <GameNavigation 
