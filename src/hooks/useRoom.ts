@@ -12,6 +12,8 @@ export interface Room {
   status: string;
   current_level: number | null;
   current_question_id: string | null;
+  current_event_id: string | null;
+  event_player_name: string | null;
   created_at: string;
   updated_at: string;
 }
