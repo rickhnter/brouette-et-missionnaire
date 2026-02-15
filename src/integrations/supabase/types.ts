@@ -212,6 +212,38 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          player_name: string
+          session_id: string
+          subscription: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          player_name: string
+          session_id: string
+          subscription: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          player_name?: string
+          session_id?: string
+          subscription?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "game_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questions: {
         Row: {
           created_at: string
