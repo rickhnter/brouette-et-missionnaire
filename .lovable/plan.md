@@ -1,77 +1,124 @@
 
-# Tutoriel anime au lancement de partie
 
-## Concept
+# Correction des bugs de synchronisation du jeu
 
-Une sequence d'ecrans animes de type "onboarding" qui s'affiche pour les deux joueurs juste apres que les deux se soient connectes a la room, AVANT la premiere question. Chaque ecran explique un aspect du jeu avec des animations Framer Motion.
+## Problemes identifies
 
-## Sequence des ecrans (5 slides)
+Apres analyse du code, voici les causes racines des bugs :
 
-1. **Bienvenue** - Logo + noms des deux joueurs avec animation de coeurs
-2. **Les questions** - Explication : "Vous allez repondre chacun de votre cote, puis decouvrir la reponse de l'autre"  
-3. **Les niveaux** - Icones flamme + explication des 5 niveaux (Decouverte -> Sans limites)
-4. **Les evenements** - Icones des 6 types d'evenements (message, photo, sync, confession, game, promesse) avec un apercu rapide
-5. **C'est parti !** - Animation de lancement + bouton "Commencer"
+### Bug 1 : Double avancement des questions
+Quand un evenement se termine, les **deux joueurs** ont un bouton "Continuer" qui appelle `proceedToNextQuestion()`. Les deux joueurs avancent donc la question **chacun de leur cote**, ce qui fait sauter une question ou desynchronise les ecrans.
 
-## Synchronisation entre les deux joueurs
+- `handleEventComplete` (joueur actif) : efface l'evenement ET avance la question
+- `handlePartnerEventContinue` (partenaire) : fait exactement la meme chose
 
-- Le tutoriel est **individuel** : chaque joueur avance a son rythme dans les slides
-- Le dernier slide affiche "Commencer" qui declenche `startGame()`
-- Si un joueur finit le tuto avant l'autre, le `startGame()` est appele par le premier joueur pret. Le second verra automatiquement la premiere question grace au realtime (le `current_question_id` sera deja defini)
-- Aucune modification de base de donnees necessaire : le tutoriel est purement cote client
+Resultat : la question avance deux fois.
 
-## Fichiers a creer / modifier
+### Bug 2 : Ecran bloque en attente mutuelle (screenshot)
+Le screenshot montre les deux joueurs bloques sur "Compliment" avec "En attente du message de...". Cela arrive quand :
+- Un evenement `requires_both` (sync) est detecte
+- Les deux joueurs soumettent leur reponse
+- Mais la detection de la reponse du partenaire ne fonctionne pas car le polling dans `useGameEvents` et les `useEffect` de detection se marchent dessus
 
-### 1. Nouveau : `src/components/TutorialScreen.tsx`
+### Bug 3 : Confusion entre types d'evenements
+Le joueur peut voir un "Compliment" (message) puis passer a une "Promesse" car les deux joueurs declenchent `proceedToNextQuestion` independamment, et le second appel fait encore avancer.
 
-Composant principal du tutoriel contenant :
-- Un state `currentSlide` (0 a 4)
-- 5 sous-composants de slides avec animations Framer Motion (AnimatePresence pour les transitions)
-- Des indicateurs de progression (petits points en bas)
-- Boutons "Suivant" et "Passer le tutoriel"
-- Utilisation des icones SVG existantes (`icon-flamme.svg`, `icon-message.svg`, `icon-photo.svg`, `icon-sync.svg`, `icon-confession.svg`, `icon-game.svg`, `icon-magicpen.svg`)
-- Animation de swipe / slide entre les ecrans
-- Au dernier slide, le bouton "Commencer" appelle `onComplete()`
+## Principe de la solution
 
-### 2. Modifier : `src/pages/Index.tsx`
+**Un seul joueur doit etre responsable de l'avancement de la question.**
 
-- Ajouter `'tutorial'` au type `GameState`
-- Apres que les deux joueurs soient connectes (dans l'effet `auto-start`), si c'est une **nouvelle partie** (pas de `current_question_id` encore), passer a `gameState = 'tutorial'` au lieu de lancer `startGame()` directement
-- A la fin du tutoriel (`onComplete`), appeler `startGame()` pour demarrer la premiere question
-- Si c'est une partie **reprise** (resume avec `current_question_id` deja defini), sauter le tutoriel et aller directement a l'etat de jeu
-- Ajouter le rendu conditionnel pour `gameState === 'tutorial'`
+La regle simple : seul le joueur qui a **declenche** l'evenement (ou `player1` pour les sync) est autorise a appeler `proceedToNextQuestion`. L'autre joueur se contente de remettre a zero son etat local et attend que le realtime mette a jour `current_question_id`.
 
-## Details des animations par slide
+## Modifications
 
-**Slide 1 - Bienvenue** :
-- Logo qui apparait en scale-in depuis le centre
-- Noms des deux joueurs qui glissent depuis les cotes opposes (gauche/droite) pour se rejoindre au centre
-- Coeurs flottants en arriere-plan
+### 1. `src/pages/Index.tsx` - Separation des responsabilites
 
-**Slide 2 - Les questions** :
-- Carte de question simulee qui apparait
-- Deux bulles de reponse qui se revelent avec un delai
-- Animation de "revelation" : les reponses se retournent comme des cartes
+**handleEventComplete** (pour les evenements sync/reveal) :
+- Verifier si le joueur est le "leader" (celui qui a declenche l'event, ou player1 pour les sync)
+- Si leader : effacer l'evenement en DB + appeler `proceedToNextQuestion`
+- Si non-leader : juste remettre a zero l'etat local (le realtime detectera le changement de `current_question_id`)
 
-**Slide 3 - Les niveaux** :
-- Les 5 flammes apparaissent une par une avec un effet de cascade
-- Chaque flamme porte son label (Decouverte, Complicite, Intimite, Passion, Sans limites)
-- Intensite croissante des couleurs
+**handlePartnerEventContinue** (pour les evenements solo cote partenaire) :
+- Ne PLUS appeler `proceedToNextQuestion`
+- Juste remettre a zero l'etat local
+- L'avancement est deja fait par le joueur actif via `handleEventComplete`
 
-**Slide 4 - Les evenements** :
-- Les 6 icones d'evenements apparaissent en cercle autour d'un point central
-- Chaque icone tourne legerement et s'illumine a tour de role
-- Texte explicatif : "Des surprises apparaitront entre les questions !"
+**Correction du flux de detection** :
+- L'effet qui detecte le retour a `question` quand `currentEventId` passe a `null` (lignes 231-243) est deja en place mais entre en conflit avec les transitions manuelles
 
-**Slide 5 - C'est parti** :
-- Animation de compte a rebours visuel (3, 2, 1)
-- Bouton "Commencer" qui pulse avec un glow rose
-- Particules / confettis en arriere-plan
+### 2. `src/pages/Index.tsx` - Correction des effects concurrents
 
-## Aspects techniques
+**Effet de detection d'evenement (lignes 194-244)** :
+- Ajouter un garde pour ne pas re-entrer dans un etat deja actif
+- Quand `currentEventId` devient null et qu'on etait dans un etat d'evenement, ne pas forcer `question` immediatement mais laisser le changement de `current_question_id` gerer la transition
 
-- Le composant utilise `framer-motion` (deja installe) pour toutes les animations
-- Fond coherent avec le reste de l'app : `bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200`
-- Le tutoriel ne s'affiche qu'une seule fois par nouvelle partie (quand `current_question_id` est `null` au moment de la connexion des deux joueurs)
-- Support du swipe tactile pour naviguer entre les slides (utilisation des gestes Framer Motion `drag="x"`)
-- Responsive : les animations s'adaptent a la taille de l'ecran
+**Effet de changement de question (lignes 307-314)** :
+- Ce useEffect detecte deja quand `current_question_id` change via realtime
+- Il faut elargir les etats depuis lesquels il peut transitionner vers `question` pour inclure les etats d'evenement
+
+### 3. `src/hooks/useGameEvents.ts` - Fiabiliser la detection des reponses
+
+- Le hook utilise un state `responses` qui peut etre desynchronise entre les deux joueurs
+- S'assurer que `fetchResponses` ne remplace pas les donnees deja presentes
+- Ajouter un merge intelligent plutot qu'un remplacement complet
+
+### 4. Evenements solo : empecher le double `proceedToNextQuestion`
+
+Pour les evenements solo, le flux actuel est :
+1. Joueur actif termine -> `handleEventComplete` -> efface event + avance question
+2. Partenaire voit la notification -> clique "Continuer" -> `handlePartnerEventContinue` -> efface event + avance question (DOUBLON)
+
+Correction : le partenaire ne doit PAS effacer l'event ni avancer. Il attend simplement que le realtime lui dise que `current_event_id` est null et `current_question_id` a change.
+
+## Resume des changements par fichier
+
+| Fichier | Changement |
+|---------|-----------|
+| `src/pages/Index.tsx` | Separer leader/follower pour l'avancement. Corriger les useEffects concurrents. Ne plus appeler `proceedToNextQuestion` cote partenaire. |
+| `src/hooks/useGameEvents.ts` | Merger les reponses au lieu de les remplacer dans `fetchResponses`. |
+
+## Details techniques
+
+### Logique leader/follower
+
+```text
+Evenement SOLO :
+  - Leader = eventPlayerNameFromRoom (le joueur qui a l'action)
+  - Leader clique "Continuer" -> efface event + avance question
+  - Follower clique "Continuer" -> remet a zero l'etat local uniquement
+
+Evenement SYNC (requires_both) :
+  - Leader = player1_name (convention arbitraire mais deterministe)
+  - Les deux joueurs voient le reveal
+  - Leader clique "Continuer" -> efface event + avance question  
+  - Follower clique "Continuer" -> remet a zero l'etat local uniquement
+```
+
+### Transition d'etat quand l'evenement est efface
+
+Le follower detecte le changement via l'effet existant (ligne 231-243) :
+- `currentEventId` passe a null
+- L'etat passe a `question`
+- En parallele, le `current_question_id` change aussi via le realtime
+- L'effet de changement de question (ligne 307-314) s'assure que le bon ecran s'affiche
+
+### Merge des reponses dans useGameEvents
+
+Au lieu de :
+```text
+setResponses(data || [])
+```
+
+Utiliser un merge par ID pour eviter de perdre des reponses deja detectees par le realtime :
+```text
+setResponses(prev => {
+  const merged = [...prev];
+  for (const item of data) {
+    if (!merged.some(r => r.id === item.id)) {
+      merged.push(item);
+    }
+  }
+  return merged;
+})
+```
+
