@@ -307,7 +307,21 @@ const Index = () => {
   useEffect(() => {
     if (currentRoom?.current_question_id && currentRoom.current_question_id !== lastQuestionId) {
       setLastQuestionId(currentRoom.current_question_id);
-      if (!currentEventId && (gameState === 'reveal' || gameState === 'waiting-partner')) {
+      // Transition to question from any state where question advancement is expected
+      // This includes event states (for the follower who didn't advance themselves)
+      if (!currentEventId && (
+        gameState === 'reveal' || 
+        gameState === 'waiting-partner' ||
+        gameState === 'event' ||
+        gameState === 'event-waiting' ||
+        gameState === 'event-reveal' ||
+        gameState === 'partner-event-waiting' ||
+        gameState === 'partner-event-notification'
+      )) {
+        setCurrentEvent(null);
+        setPartnerEvent(null);
+        setPartnerEventResponse(null);
+        resetResponses();
         setGameState('question');
       }
     }
@@ -532,6 +546,19 @@ const Index = () => {
     // Solo event: stay on event screen, player will click Continue
   };
 
+  // Determine if current player is the "leader" who controls advancement
+  const isEventLeader = (): boolean => {
+    if (!currentRoom || !playerName) return false;
+    
+    // For sync events: player1 is always the leader (deterministic)
+    if (currentEvent?.requires_both) {
+      return playerName === currentRoom.player1_name;
+    }
+    
+    // For solo events: the event player (active player) is the leader
+    return eventPlayerNameFromRoom === playerName;
+  };
+
   const handleEventComplete = async () => {
     // Guard: only advance if event is still active (prevents double-advance)
     if (!currentEventId) {
@@ -543,32 +570,26 @@ const Index = () => {
     setCurrentEvent(null);
     resetResponses();
     
-    await updateSession({
-      current_event_id: null,
-      event_player_name: null
-    });
-    
-    await proceedToNextQuestion();
+    if (isEventLeader()) {
+      // Leader: clear event in DB and advance to next question
+      await updateSession({
+        current_event_id: null,
+        event_player_name: null
+      });
+      await proceedToNextQuestion();
+    }
+    // Follower: just reset local state. The realtime listener will detect
+    // currentEventId becoming null and transition to 'question' state.
   };
 
   const handlePartnerEventContinue = async () => {
-    // Guard: only advance if event is still active (prevents double-advance)
-    if (!currentEventId) {
-      setPartnerEvent(null);
-      setPartnerEventResponse(null);
-      return;
-    }
-    
+    // Partner always just resets local state.
+    // The leader (active event player) has already advanced the question.
     setPartnerEvent(null);
     setPartnerEventResponse(null);
     resetResponses();
-    
-    await updateSession({
-      current_event_id: null,
-      event_player_name: null
-    });
-    
-    await proceedToNextQuestion();
+    // Don't call proceedToNextQuestion or updateSession.
+    // The realtime will handle the transition via currentEventId -> null detection.
   };
 
   const handleShowHistory = () => {
