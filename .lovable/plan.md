@@ -1,127 +1,77 @@
 
+# Tutoriel anime au lancement de partie
 
-# Plan : Notifications Push + In-App
+## Concept
 
-## Vue d'ensemble
+Une sequence d'ecrans animes de type "onboarding" qui s'affiche pour les deux joueurs juste apres que les deux se soient connectes a la room, AVANT la premiere question. Chaque ecran explique un aspect du jeu avec des animations Framer Motion.
 
-Quand un joueur repond a une question ou termine un evenement, son partenaire recevra :
-- **En arriere-plan** : une notification push navigateur (meme si l'onglet est ferme)
-- **Au premier plan** : un son + un toast visuel dans l'app
+## Sequence des ecrans (5 slides)
 
-## Architecture
+1. **Bienvenue** - Logo + noms des deux joueurs avec animation de coeurs
+2. **Les questions** - Explication : "Vous allez repondre chacun de votre cote, puis decouvrir la reponse de l'autre"  
+3. **Les niveaux** - Icones flamme + explication des 5 niveaux (Decouverte -> Sans limites)
+4. **Les evenements** - Icones des 6 types d'evenements (message, photo, sync, confession, game, promesse) avec un apercu rapide
+5. **C'est parti !** - Animation de lancement + bouton "Commencer"
 
-```text
-Joueur A repond
-       |
-       v
-  Index.tsx detecte la reponse
-       |
-       v
-  Appel Edge Function "send-push-notification"
-       |
-       v
-  Edge Function envoie via Web Push API
-       |
-       v
-  Service Worker de Joueur B recoit la notification
-  + Toast in-app via Realtime (deja en place)
-```
+## Synchronisation entre les deux joueurs
 
-## Etapes d'implementation
+- Le tutoriel est **individuel** : chaque joueur avance a son rythme dans les slides
+- Le dernier slide affiche "Commencer" qui declenche `startGame()`
+- Si un joueur finit le tuto avant l'autre, le `startGame()` est appele par le premier joueur pret. Le second verra automatiquement la premiere question grace au realtime (le `current_question_id` sera deja defini)
+- Aucune modification de base de donnees necessaire : le tutoriel est purement cote client
 
-### 1. Generation des cles VAPID
+## Fichiers a creer / modifier
 
-Les notifications push Web necessitent des cles VAPID (Voluntary Application Server Identification). Ce sont des cles cryptographiques qui identifient votre serveur aupres des navigateurs.
+### 1. Nouveau : `src/components/TutorialScreen.tsx`
 
-- Generer une paire de cles publique/privee VAPID
-- Stocker la cle privee en secret backend (`VAPID_PRIVATE_KEY`)
-- Stocker la cle publique en variable d'environnement frontend (`VITE_VAPID_PUBLIC_KEY`)
-- Stocker un email de contact en secret (`VAPID_SUBJECT`, ex: `mailto:you@example.com`)
+Composant principal du tutoriel contenant :
+- Un state `currentSlide` (0 a 4)
+- 5 sous-composants de slides avec animations Framer Motion (AnimatePresence pour les transitions)
+- Des indicateurs de progression (petits points en bas)
+- Boutons "Suivant" et "Passer le tutoriel"
+- Utilisation des icones SVG existantes (`icon-flamme.svg`, `icon-message.svg`, `icon-photo.svg`, `icon-sync.svg`, `icon-confession.svg`, `icon-game.svg`, `icon-magicpen.svg`)
+- Animation de swipe / slide entre les ecrans
+- Au dernier slide, le bouton "Commencer" appelle `onComplete()`
 
-### 2. Table `push_subscriptions` (nouvelle)
+### 2. Modifier : `src/pages/Index.tsx`
 
-Stocker les abonnements push de chaque joueur par room :
+- Ajouter `'tutorial'` au type `GameState`
+- Apres que les deux joueurs soient connectes (dans l'effet `auto-start`), si c'est une **nouvelle partie** (pas de `current_question_id` encore), passer a `gameState = 'tutorial'` au lieu de lancer `startGame()` directement
+- A la fin du tutoriel (`onComplete`), appeler `startGame()` pour demarrer la premiere question
+- Si c'est une partie **reprise** (resume avec `current_question_id` deja defini), sauter le tutoriel et aller directement a l'etat de jeu
+- Ajouter le rendu conditionnel pour `gameState === 'tutorial'`
 
-| Colonne | Type | Description |
-|---------|------|-------------|
-| id | uuid | Cle primaire |
-| session_id | uuid | FK vers game_sessions |
-| player_name | text | Nom du joueur |
-| subscription | jsonb | Objet PushSubscription du navigateur |
-| created_at | timestamp | Date de creation |
+## Details des animations par slide
 
-- Index unique sur `(session_id, player_name)` pour eviter les doublons
-- RLS : lecture/ecriture publique (pas d'auth dans le projet)
+**Slide 1 - Bienvenue** :
+- Logo qui apparait en scale-in depuis le centre
+- Noms des deux joueurs qui glissent depuis les cotes opposes (gauche/droite) pour se rejoindre au centre
+- Coeurs flottants en arriere-plan
 
-### 3. Service Worker (`public/sw.js`)
+**Slide 2 - Les questions** :
+- Carte de question simulee qui apparait
+- Deux bulles de reponse qui se revelent avec un delai
+- Animation de "revelation" : les reponses se retournent comme des cartes
 
-Un fichier Service Worker qui :
-- Ecoute les evenements `push` pour afficher les notifications systeme
-- Gere le clic sur la notification pour ramener l'utilisateur dans l'app
-- S'enregistre automatiquement au chargement de l'app
+**Slide 3 - Les niveaux** :
+- Les 5 flammes apparaissent une par une avec un effet de cascade
+- Chaque flamme porte son label (Decouverte, Complicite, Intimite, Passion, Sans limites)
+- Intensite croissante des couleurs
 
-### 4. Hook `usePushNotifications`
+**Slide 4 - Les evenements** :
+- Les 6 icones d'evenements apparaissent en cercle autour d'un point central
+- Chaque icone tourne legerement et s'illumine a tour de role
+- Texte explicatif : "Des surprises apparaitront entre les questions !"
 
-Nouveau hook qui :
-- Verifie si le navigateur supporte les notifications push
-- Demande la permission a l'utilisateur
-- S'abonne au push via le Service Worker
-- Enregistre l'abonnement en base (table `push_subscriptions`)
-- Expose une fonction `sendPushToPartner(title, body)` qui appelle l'edge function
+**Slide 5 - C'est parti** :
+- Animation de compte a rebours visuel (3, 2, 1)
+- Bouton "Commencer" qui pulse avec un glow rose
+- Particules / confettis en arriere-plan
 
-### 5. Edge Function `send-push-notification`
+## Aspects techniques
 
-Fonction backend qui :
-- Recoit `session_id`, `player_name` (expediteur), `title`, `body`
-- Cherche l'abonnement push du partenaire dans `push_subscriptions`
-- Envoie la notification via le protocole Web Push (utilisant la lib `web-push`)
-- Retourne le statut d'envoi
-
-### 6. Notifications in-app (son + toast)
-
-Dans `Index.tsx`, aux moments cles (reponse partenaire, evenement termine) :
-- Jouer un son de notification discret
-- Afficher un toast avec `sonner` (deja installe) : "Ton partenaire a repondu !"
-- Conditionner : ne pas notifier si le joueur est deja sur l'ecran de reveal
-
-### 7. Integration dans le flux de jeu
-
-Declencheurs de notification (dans `Index.tsx`) :
-- **Reponse a une question** : quand le realtime detecte que le partenaire a repondu, envoyer un push + toast
-- **Evenement sync** : quand le partenaire repond a un evenement synchronise
-- **Evenement solo termine** : quand le joueur actif termine son evenement
-
-Detection intelligente :
-- Si l'app est au premier plan (document visible) : toast uniquement
-- Si l'app est en arriere-plan : notification push
-- Utiliser `document.visibilityState` pour determiner l'etat
-
-## Fichiers impactes
-
-| Fichier | Action |
-|---------|--------|
-| `public/sw.js` | Nouveau - Service Worker |
-| `src/hooks/usePushNotifications.ts` | Nouveau - Gestion push |
-| `supabase/functions/send-push-notification/index.ts` | Nouveau - Edge function |
-| `src/pages/Index.tsx` | Modifier - Ajouter les declencheurs de notification |
-| `public/notification-sound.mp3` | Nouveau - Son de notification |
-| Migration SQL | Nouvelle table `push_subscriptions` |
-
-## Details techniques
-
-### Compatibilite navigateur
-- Les notifications push fonctionnent sur Chrome, Firefox, Edge, Safari 16+
-- Sur iOS Safari, les notifications push necessitent que l'app soit installee en PWA (Add to Home Screen)
-- Un fallback gracieux sera mis en place : si le navigateur ne supporte pas les push, seules les notifications in-app seront actives
-
-### Flux de permission
-1. Au premier lancement dans une room, un bouton discret "Activer les notifications" apparait
-2. Le joueur clique et le navigateur affiche sa propre popup de permission
-3. Si accepte : l'abonnement est enregistre en base
-4. Si refuse : seules les notifications in-app (toast + son) fonctionnent
-
-### Securite
-- Les cles VAPID privees restent cote serveur (edge function)
-- L'abonnement push est stocke par room + joueur
-- Pas de donnees sensibles dans le payload de notification
-
+- Le composant utilise `framer-motion` (deja installe) pour toutes les animations
+- Fond coherent avec le reste de l'app : `bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200`
+- Le tutoriel ne s'affiche qu'une seule fois par nouvelle partie (quand `current_question_id` est `null` au moment de la connexion des deux joueurs)
+- Support du swipe tactile pour naviguer entre les slides (utilisation des gestes Framer Motion `drag="x"`)
+- Responsive : les animations s'adaptent a la taille de l'ecran
