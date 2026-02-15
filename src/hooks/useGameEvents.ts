@@ -73,7 +73,19 @@ export const useGameEvents = (sessionId: string | null) => {
     if (error) {
       console.error('Error fetching event responses:', error);
     } else {
-      setResponses(data || []);
+      // Merge by ID to avoid losing responses already detected by realtime
+      setResponses(prev => {
+        const merged = [...prev];
+        for (const item of (data || [])) {
+          const existingIdx = merged.findIndex(r => r.id === item.id);
+          if (existingIdx >= 0) {
+            merged[existingIdx] = item; // Update existing
+          } else {
+            merged.push(item); // Add new
+          }
+        }
+        return merged;
+      });
     }
   }, [sessionId]);
 
