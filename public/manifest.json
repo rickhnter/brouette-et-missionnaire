@@ -1,0 +1,27 @@
+{
+  "name": "Brouette & Missionnaire",
+  "short_name": "B&M",
+  "description": "Jouez tout en découvrant votre partenaire !",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fce7f3",
+  "theme_color": "#e11d48",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "https://storage.googleapis.com/gpt-engineer-file-uploads/3IyGeuDyF6ZgAhkoXeJ50JCLD3S2/uploads/1770386687518-logo-DME0i5II.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://storage.googleapis.com/gpt-engineer-file-uploads/3IyGeuDyF6ZgAhkoXeJ50JCLD3S2/uploads/1770386687518-logo-DME0i5II.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
