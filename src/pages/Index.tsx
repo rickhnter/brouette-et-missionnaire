@@ -18,6 +18,7 @@ import { useRoom, Room } from '@/hooks/useRoom';
 import { useQuestions } from '@/hooks/useQuestions';
 import { useAnswers } from '@/hooks/useAnswers';
 import { useGameEvents, GameEvent } from '@/hooks/useGameEvents';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { supabase } from '@/integrations/supabase/client';
 
 type RoomState = 'home' | 'create' | 'join' | 'my-rooms';
@@ -96,6 +97,15 @@ const Index = () => {
     resetResponses,
     fetchResponses
   } = useGameEvents(currentRoom?.id || null);
+
+  const {
+    isSupported: pushSupported,
+    isSubscribed: pushSubscribed,
+    permission: pushPermission,
+    subscribe: subscribePush,
+    notifyPartner,
+    notifyInApp,
+  } = usePushNotifications(currentRoom?.id || null, playerName);
 
   const playerAnswered = playerName ? answers.some(a => a.player_name === playerName) : false;
   const partnerAnswered = playerName ? answers.some(a => a.player_name !== playerName) : false;
@@ -340,6 +350,42 @@ const Index = () => {
       setGameState('event-waiting');
     }
   }, [gameState, currentEvent, playerName, hasPlayerResponded, hasPartnerResponded]);
+
+  // Auto-subscribe to push notifications when entering a room
+  useEffect(() => {
+    if (currentRoom?.id && playerName && pushSupported && !pushSubscribed && pushPermission !== 'denied') {
+      subscribePush();
+    }
+  }, [currentRoom?.id, playerName, pushSupported, pushSubscribed, pushPermission, subscribePush]);
+
+  // Notification trigger: partner answered a question
+  const prevPartnerAnswered = useRef(false);
+  useEffect(() => {
+    if (!playerName || !partnerName) return;
+    if (partnerAnswered && !prevPartnerAnswered.current && playerAnswered) {
+      // Partner just answered and we were waiting
+      notifyPartner('💕 Réponse reçue !', `${partnerName} a répondu à la question`);
+    }
+    prevPartnerAnswered.current = partnerAnswered;
+  }, [partnerAnswered, playerAnswered, playerName, partnerName, notifyPartner]);
+
+  // Notification trigger: partner responded to sync event
+  const prevEventReveal = useRef(false);
+  useEffect(() => {
+    if (gameState === 'event-reveal' && !prevEventReveal.current && currentEvent) {
+      notifyInApp('🎉 Révélation !', `${partnerName} a aussi répondu à l'événement`);
+    }
+    prevEventReveal.current = gameState === 'event-reveal';
+  }, [gameState, currentEvent, partnerName, notifyInApp]);
+
+  // Notification trigger: partner finished solo event
+  const prevPartnerNotif = useRef(false);
+  useEffect(() => {
+    if (gameState === 'partner-event-notification' && !prevPartnerNotif.current && partnerEvent) {
+      notifyPartner('✅ Événement terminé', `${partnerName} a terminé son événement`);
+    }
+    prevPartnerNotif.current = gameState === 'partner-event-notification';
+  }, [gameState, partnerEvent, partnerName, notifyPartner]);
 
   const startGame = async () => {
     if (!currentRoom?.id) return;
