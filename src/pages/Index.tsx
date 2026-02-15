@@ -14,6 +14,7 @@ import { EndScreen } from '@/components/EndScreen';
 import { EventScreen } from '@/components/events/EventScreen';
 import { PartnerEventNotification } from '@/components/events/PartnerEventNotification';
 import { LevelUpAnimation } from '@/components/LevelUpAnimation';
+import { TutorialScreen } from '@/components/TutorialScreen';
 import { useRoom, Room } from '@/hooks/useRoom';
 import { useQuestions } from '@/hooks/useQuestions';
 import { useAnswers } from '@/hooks/useAnswers';
@@ -25,6 +26,7 @@ type RoomState = 'home' | 'create' | 'join' | 'my-rooms';
 
 type GameState =
   | 'waiting'
+  | 'tutorial'
   | 'question'
   | 'waiting-partner'
   | 'reveal'
@@ -172,7 +174,8 @@ const Index = () => {
 
     if (currentRoom.player1_connected && currentRoom.player2_connected) {
       if (!currentRoom.current_question_id) {
-        startGame();
+        // New game: show tutorial first
+        setGameState('tutorial');
       } else if (!currentEventId) {
         // No active event - restore state based on answers
         if (playerAnswered && partnerAnswered) {
@@ -409,6 +412,10 @@ const Index = () => {
       .eq('id', currentRoom.id);
     
     setGameState('question');
+  };
+
+  const handleTutorialComplete = async () => {
+    await startGame();
   };
 
   const updateSession = async (updates: Partial<Room>) => {
@@ -681,6 +688,16 @@ const Index = () => {
           roomName={currentRoom.room_name || undefined}
         />
       </>
+    );
+  }
+
+  if (gameState === 'tutorial' && partnerName) {
+    return (
+      <TutorialScreen
+        playerName={playerName!}
+        partnerName={partnerName}
+        onComplete={handleTutorialComplete}
+      />
     );
   }
 
