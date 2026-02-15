@@ -1,192 +1,127 @@
 
-# Plan: Système de Rooms pour le jeu
+
+# Plan : Notifications Push + In-App
 
 ## Vue d'ensemble
 
-Le système actuel utilise déjà `game_sessions` comme base pour les "rooms", mais il est limité à 2 joueurs hardcodés (Pierrick/Daisy) et ne permet pas de créer plusieurs parties distinctes. L'objectif est de créer un vrai système de rooms où:
+Quand un joueur repond a une question ou termine un evenement, son partenaire recevra :
+- **En arriere-plan** : une notification push navigateur (meme si l'onglet est ferme)
+- **Au premier plan** : un son + un toast visuel dans l'app
 
-1. Un joueur peut créer une room avec un code unique
-2. Un autre joueur peut rejoindre cette room avec le code
-3. Chaque room a sa propre progression, historique et réponses
-4. Les joueurs peuvent avoir plusieurs rooms (avec différents partenaires ou pour rejouer)
+## Architecture
 
-## Architecture proposée
-
-### 1. Modification de la base de données
-
-**Table `game_sessions` (modifiée):**
-```
-id: uuid (existant)
-room_code: text (NOUVEAU - code unique de 6 caractères)
-room_name: text (NOUVEAU - nom optionnel de la room)
-player1_name: text (existant - mais dynamique maintenant)
-player2_name: text (existant)
-player1_connected: boolean (existant)
-player2_connected: boolean (existant)
-current_level: integer (existant)
-current_question_id: uuid (existant)
-current_event_id: uuid (existant)
-event_player_name: text (existant)
-status: text (existant - 'waiting', 'playing', 'finished')
-created_at, updated_at (existants)
+```text
+Joueur A repond
+       |
+       v
+  Index.tsx detecte la reponse
+       |
+       v
+  Appel Edge Function "send-push-notification"
+       |
+       v
+  Edge Function envoie via Web Push API
+       |
+       v
+  Service Worker de Joueur B recoit la notification
+  + Toast in-app via Realtime (deja en place)
 ```
 
-**Nouvelles colonnes:**
-- `room_code`: Code unique de 6 caractères (ex: "ABC123") pour partager et rejoindre
-- `room_name`: Nom personnalisé optionnel pour identifier la room (ex: "Notre aventure")
+## Etapes d'implementation
 
-### 2. Flux utilisateur
+### 1. Generation des cles VAPID
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Écran d'accueil                        │
-│                                                             │
-│   ┌─────────────────────┐    ┌─────────────────────┐       │
-│   │   Créer une room    │    │  Rejoindre une room │       │
-│   └─────────────────────┘    └─────────────────────┘       │
-│                                                             │
-│              ┌─────────────────────────┐                    │
-│              │   Mes rooms en cours    │                    │
-│              └─────────────────────────┘                    │
-└─────────────────────────────────────────────────────────────┘
+Les notifications push Web necessitent des cles VAPID (Voluntary Application Server Identification). Ce sont des cles cryptographiques qui identifient votre serveur aupres des navigateurs.
 
-Créer une room:
-1. Entrer son prénom
-2. (Optionnel) Nommer la room
-3. Room créée avec un code unique
-4. Partager le code au partenaire
-5. Attendre le partenaire
+- Generer une paire de cles publique/privee VAPID
+- Stocker la cle privee en secret backend (`VAPID_PRIVATE_KEY`)
+- Stocker la cle publique en variable d'environnement frontend (`VITE_VAPID_PUBLIC_KEY`)
+- Stocker un email de contact en secret (`VAPID_SUBJECT`, ex: `mailto:you@example.com`)
 
-Rejoindre une room:
-1. Entrer le code de la room
-2. Entrer son prénom
-3. Rejoindre la room
-4. Le jeu démarre automatiquement
+### 2. Table `push_subscriptions` (nouvelle)
 
-Mes rooms en cours:
-- Liste des rooms où le joueur participe
-- Statut de chaque room (en attente, en cours, terminée)
-- Possibilité de reprendre une partie
-```
+Stocker les abonnements push de chaque joueur par room :
 
-### 3. Composants à créer/modifier
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | uuid | Cle primaire |
+| session_id | uuid | FK vers game_sessions |
+| player_name | text | Nom du joueur |
+| subscription | jsonb | Objet PushSubscription du navigateur |
+| created_at | timestamp | Date de creation |
 
-**Nouveaux composants:**
-- `RoomHomeScreen.tsx`: Écran d'accueil avec les 3 options (créer/rejoindre/mes rooms)
-- `CreateRoomScreen.tsx`: Formulaire de création de room
-- `JoinRoomScreen.tsx`: Formulaire pour entrer un code et rejoindre
-- `MyRoomsScreen.tsx`: Liste des rooms du joueur
+- Index unique sur `(session_id, player_name)` pour eviter les doublons
+- RLS : lecture/ecriture publique (pas d'auth dans le projet)
 
-**Composants à modifier:**
-- `LoginScreen.tsx`: Transformer en écran de saisie de prénom (après sélection de la room)
-- `WaitingRoom.tsx`: Afficher le code de room à partager
-- `Index.tsx`: Nouveau flux de navigation avec les rooms
+### 3. Service Worker (`public/sw.js`)
 
-### 4. Hook useRoom
+Un fichier Service Worker qui :
+- Ecoute les evenements `push` pour afficher les notifications systeme
+- Gere le clic sur la notification pour ramener l'utilisateur dans l'app
+- S'enregistre automatiquement au chargement de l'app
 
-Nouveau hook pour gérer les rooms:
+### 4. Hook `usePushNotifications`
 
-```typescript
-interface Room {
-  id: string;
-  room_code: string;
-  room_name: string | null;
-  player1_name: string;
-  player2_name: string | null;
-  status: 'waiting' | 'playing' | 'finished';
-  current_level: number | null;
-}
+Nouveau hook qui :
+- Verifie si le navigateur supporte les notifications push
+- Demande la permission a l'utilisateur
+- S'abonne au push via le Service Worker
+- Enregistre l'abonnement en base (table `push_subscriptions`)
+- Expose une fonction `sendPushToPartner(title, body)` qui appelle l'edge function
 
-const useRoom = () => {
-  // Créer une room
-  const createRoom = (playerName: string, roomName?: string) => {...}
-  
-  // Rejoindre une room par code
-  const joinRoom = (roomCode: string, playerName: string) => {...}
-  
-  // Récupérer les rooms d'un joueur (basé sur localStorage ou prénom)
-  const getMyRooms = (playerName: string) => {...}
-  
-  // Reprendre une room existante
-  const resumeRoom = (roomId: string, playerName: string) => {...}
-}
-```
+### 5. Edge Function `send-push-notification`
 
-### 5. Génération du code de room
+Fonction backend qui :
+- Recoit `session_id`, `player_name` (expediteur), `title`, `body`
+- Cherche l'abonnement push du partenaire dans `push_subscriptions`
+- Envoie la notification via le protocole Web Push (utilisant la lib `web-push`)
+- Retourne le statut d'envoi
 
-Fonction pour générer un code unique de 6 caractères:
-```typescript
-const generateRoomCode = (): string => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sans I, O, 0, 1 pour éviter confusion
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
-```
+### 6. Notifications in-app (son + toast)
 
-### 6. Stockage local
+Dans `Index.tsx`, aux moments cles (reponse partenaire, evenement termine) :
+- Jouer un son de notification discret
+- Afficher un toast avec `sonner` (deja installe) : "Ton partenaire a repondu !"
+- Conditionner : ne pas notifier si le joueur est deja sur l'ecran de reveal
 
-Pour retrouver "mes rooms" sans authentification:
-- Stocker les room IDs et playerName dans localStorage
-- Structure: `{ rooms: [{ roomId, playerName, lastAccess }] }`
-- Permet de lister les parties en cours du joueur
+### 7. Integration dans le flux de jeu
 
-## Migration SQL
+Declencheurs de notification (dans `Index.tsx`) :
+- **Reponse a une question** : quand le realtime detecte que le partenaire a repondu, envoyer un push + toast
+- **Evenement sync** : quand le partenaire repond a un evenement synchronise
+- **Evenement solo termine** : quand le joueur actif termine son evenement
 
-```sql
--- Ajouter les colonnes pour le système de rooms
-ALTER TABLE public.game_sessions
-ADD COLUMN room_code TEXT UNIQUE,
-ADD COLUMN room_name TEXT;
+Detection intelligente :
+- Si l'app est au premier plan (document visible) : toast uniquement
+- Si l'app est en arriere-plan : notification push
+- Utiliser `document.visibilityState` pour determiner l'etat
 
--- Créer un index pour la recherche par code
-CREATE UNIQUE INDEX idx_game_sessions_room_code ON public.game_sessions(room_code);
-
--- Générer des codes pour les sessions existantes (optionnel)
-UPDATE public.game_sessions 
-SET room_code = UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 6))
-WHERE room_code IS NULL;
-
--- Rendre room_code obligatoire pour les nouvelles sessions
-ALTER TABLE public.game_sessions
-ALTER COLUMN room_code SET NOT NULL;
-```
-
-## Fichiers impactés
+## Fichiers impactes
 
 | Fichier | Action |
 |---------|--------|
-| `src/pages/Index.tsx` | Refactoring majeur du flux de navigation |
-| `src/components/LoginScreen.tsx` | Simplifier en écran de prénom uniquement |
-| `src/components/WaitingRoom.tsx` | Afficher le code de room |
-| `src/components/RoomHomeScreen.tsx` | Nouveau - Écran d'accueil |
-| `src/components/CreateRoomScreen.tsx` | Nouveau - Création de room |
-| `src/components/JoinRoomScreen.tsx` | Nouveau - Rejoindre une room |
-| `src/components/MyRoomsScreen.tsx` | Nouveau - Liste des rooms |
-| `src/hooks/useRoom.ts` | Nouveau - Gestion des rooms |
-| `src/hooks/useGameSession.ts` | Adapter pour utiliser room_code |
-| Migration SQL | Ajouter room_code et room_name |
+| `public/sw.js` | Nouveau - Service Worker |
+| `src/hooks/usePushNotifications.ts` | Nouveau - Gestion push |
+| `supabase/functions/send-push-notification/index.ts` | Nouveau - Edge function |
+| `src/pages/Index.tsx` | Modifier - Ajouter les declencheurs de notification |
+| `public/notification-sound.mp3` | Nouveau - Son de notification |
+| Migration SQL | Nouvelle table `push_subscriptions` |
 
-## Considérations techniques
+## Details techniques
 
-### Sécurité
-- Le code de room est public, pas de données sensibles exposées
-- RLS existant reste valide (accès public pour un jeu sans auth)
+### Compatibilite navigateur
+- Les notifications push fonctionnent sur Chrome, Firefox, Edge, Safari 16+
+- Sur iOS Safari, les notifications push necessitent que l'app soit installee en PWA (Add to Home Screen)
+- Un fallback gracieux sera mis en place : si le navigateur ne supporte pas les push, seules les notifications in-app seront actives
 
-### Performance  
-- Index sur room_code pour recherche rapide
-- Realtime déjà activé sur game_sessions
+### Flux de permission
+1. Au premier lancement dans une room, un bouton discret "Activer les notifications" apparait
+2. Le joueur clique et le navigateur affiche sa propre popup de permission
+3. Si accepte : l'abonnement est enregistre en base
+4. Si refuse : seules les notifications in-app (toast + son) fonctionnent
 
-### Rétrocompatibilité
-- Les sessions existantes recevront un code généré automatiquement
-- Les anciennes URLs avec `?player=` peuvent rediriger vers le nouveau flux
+### Securite
+- Les cles VAPID privees restent cote serveur (edge function)
+- L'abonnement push est stocke par room + joueur
+- Pas de donnees sensibles dans le payload de notification
 
-## Résultat attendu
-
-1. Les joueurs peuvent créer des rooms avec un code unique partageable
-2. Chaque room est indépendante avec sa propre progression
-3. Les joueurs peuvent reprendre leurs parties en cours
-4. L'historique et les réponses sont bien isolés par room
-5. Possibilité de jouer avec différentes personnes (plusieurs rooms)
