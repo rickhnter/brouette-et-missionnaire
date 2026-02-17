@@ -137,8 +137,8 @@ export const useRoom = () => {
         return null;
       }
 
-      // Vérifier si la room est déjà pleine
-      if (room.player2_name && room.player2_name !== playerName) {
+      // Vérifier si la room est déjà pleine (sauf si le joueur est déjà player1 ou player2)
+      if (room.player2_name && room.player2_name !== playerName && room.player1_name !== playerName) {
         setError('Cette room est déjà complète.');
         return null;
       }
