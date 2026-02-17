@@ -666,6 +666,11 @@ const Index = () => {
         onCreateRoom={() => setRoomState('create')}
         onJoinRoom={() => setRoomState('join')}
         onMyRooms={() => setRoomState('my-rooms')}
+        onJoinWithCode={(code) => {
+          setRoomState('join');
+          // Pre-fill handled via state — pass code via URL param approach
+          setSearchParams({ code });
+        }}
         hasExistingRooms={hasExistingRooms}
       />
     );
