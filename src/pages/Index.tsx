@@ -192,7 +192,12 @@ const Index = () => {
   // Transition from room state to game state when room is set
   useEffect(() => {
     if (currentRoom && playerName && !gameState) {
-      setGameState('waiting');
+      // If creator (no partner yet) and no active question → show tutorial immediately
+      if (!currentRoom.player2_name && !currentRoom.current_question_id) {
+        setGameState('tutorial');
+      } else {
+        setGameState('waiting');
+      }
       setRoomState(null);
     }
   }, [currentRoom, playerName, gameState]);
@@ -458,6 +463,11 @@ const Index = () => {
   };
 
   const handleTutorialComplete = async () => {
+    // If partner hasn't joined yet, go to waiting screen instead of starting the game
+    if (!currentRoom?.player2_name) {
+      setGameState('waiting');
+      return;
+    }
     await startGame();
   };
 
@@ -746,11 +756,13 @@ const Index = () => {
     );
   }
 
-  if (gameState === 'tutorial' && partnerName) {
+  if (gameState === 'tutorial') {
+    const isCreatorAlone = !currentRoom?.player2_name;
     return (
       <TutorialScreen
         playerName={playerName!}
-        partnerName={partnerName}
+        partnerName={isCreatorAlone ? '...' : (partnerName || '...')}
+        roomCode={isCreatorAlone ? currentRoom?.room_code : undefined}
         onComplete={handleTutorialComplete}
       />
     );
