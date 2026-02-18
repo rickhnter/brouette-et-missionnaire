@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Copy, Check, Share2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import logo from '@/assets/logo.png';
 import iconFlamme from '@/assets/icon-flamme.svg';
 import iconMessage from '@/assets/icon-message.svg';
@@ -12,6 +14,7 @@ import iconMagicpen from '@/assets/icon-magicpen.svg';
 interface TutorialScreenProps {
   playerName: string;
   partnerName: string;
+  roomCode?: string;
   onComplete: () => void;
 }
 
@@ -48,53 +51,117 @@ const FloatingHearts = () => (
 );
 
 // Slide 1: Bienvenue
-const WelcomeSlide: React.FC<{ playerName: string; partnerName: string }> = ({ playerName, partnerName }) => (
-  <div className="flex flex-col items-center justify-center h-full gap-8 relative">
-    <FloatingHearts />
-    <motion.img
-      src={logo}
-      alt="Logo"
-      className="w-28 h-28 rounded-2xl shadow-lg"
-      initial={{ scale: 0, rotate: -180 }}
-      animate={{ scale: 1, rotate: 0 }}
-      transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
-    />
-    <motion.h1
-      className="text-2xl font-bold text-rose-700 text-center"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.5 }}
-    >
-      Bienvenue dans la partie !
-    </motion.h1>
-    <div className="flex items-center gap-4">
-      <motion.span
-        className="text-xl font-semibold text-rose-600 bg-white/60 px-4 py-2 rounded-full"
-        initial={{ x: -80, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ delay: 0.7, type: 'spring' }}
+const WelcomeSlide: React.FC<{ playerName: string; partnerName: string; roomCode?: string }> = ({ playerName, partnerName, roomCode }) => {
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+
+  const handleCopy = async () => {
+    if (!roomCode) return;
+    await navigator.clipboard.writeText(roomCode);
+    setCopied(true);
+    toast({ title: 'Code copié !', description: 'Partage ce code à ton partenaire 💕' });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = async () => {
+    if (!roomCode) return;
+    const shareData = {
+      title: 'Brouette & Missionnaire',
+      text: `Rejoins-moi pour jouer ! Code: ${roomCode}`,
+      url: `${window.location.origin}/?code=${roomCode}`
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+        toast({ title: 'Lien copié !', description: 'Partage ce lien à ton partenaire 💕' });
+      }
+    } catch (_) { /* user cancelled */ }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-6 relative">
+      <FloatingHearts />
+      <motion.img
+        src={logo}
+        alt="Logo"
+        className="w-28 h-28 rounded-2xl shadow-lg"
+        initial={{ scale: 0, rotate: -180 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
+      />
+      <motion.h1
+        className="text-2xl font-bold text-rose-700 text-center"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
       >
-        {playerName}
-      </motion.span>
-      <motion.span
-        className="text-2xl"
-        initial={{ scale: 0 }}
-        animate={{ scale: [0, 1.3, 1] }}
-        transition={{ delay: 1 }}
-      >
-        💗
-      </motion.span>
-      <motion.span
-        className="text-xl font-semibold text-rose-600 bg-white/60 px-4 py-2 rounded-full"
-        initial={{ x: 80, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ delay: 0.7, type: 'spring' }}
-      >
-        {partnerName}
-      </motion.span>
+        Bienvenue dans la partie !
+      </motion.h1>
+      <div className="flex items-center gap-4">
+        <motion.span
+          className="text-xl font-semibold text-rose-600 bg-white/60 px-4 py-2 rounded-full"
+          initial={{ x: -80, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.7, type: 'spring' }}
+        >
+          {playerName}
+        </motion.span>
+        <motion.span
+          className="text-2xl"
+          initial={{ scale: 0 }}
+          animate={{ scale: [0, 1.3, 1] }}
+          transition={{ delay: 1 }}
+        >
+          💗
+        </motion.span>
+        <motion.span
+          className="text-xl font-semibold text-rose-600 bg-white/60 px-4 py-2 rounded-full"
+          initial={{ x: 80, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.7, type: 'spring' }}
+        >
+          {partnerName}
+        </motion.span>
+      </div>
+
+      {/* Room code for creator waiting alone */}
+      {roomCode && (
+        <motion.div
+          className="bg-white/70 backdrop-blur rounded-2xl p-4 w-full max-w-xs shadow-md space-y-3"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2 }}
+        >
+          <p className="text-sm text-rose-600 text-center font-medium">
+            📲 Partage ce code à ton partenaire
+          </p>
+          <div className="flex items-center justify-center gap-2">
+            <div className="bg-white border-2 border-rose-300 rounded-xl px-5 py-2">
+              <span className="text-2xl font-mono font-bold text-rose-700 tracking-widest">
+                {roomCode}
+              </span>
+            </div>
+            <button
+              onClick={handleCopy}
+              className="p-2 rounded-xl border-2 border-rose-300 text-rose-600 bg-white hover:bg-rose-50 transition-colors"
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </div>
+          <button
+            onClick={handleShare}
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold py-2.5 rounded-xl text-sm"
+          >
+            <Share2 className="w-4 h-4" />
+            Partager le code
+          </button>
+        </motion.div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 // Slide 2: Les questions
 const QuestionsSlide = () => (
@@ -349,7 +416,7 @@ const Dots: React.FC<{ current: number; total: number }> = ({ current, total }) 
 );
 
 // Main component
-export const TutorialScreen: React.FC<TutorialScreenProps> = ({ playerName, partnerName, onComplete }) => {
+export const TutorialScreen: React.FC<TutorialScreenProps> = ({ playerName, partnerName, roomCode, onComplete }) => {
   const [slide, setSlide] = useState(0);
   const [[direction, slideKey], setSlideData] = useState<[number, number]>([0, 0]);
 
@@ -383,7 +450,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({ playerName, part
   };
 
   const slides = [
-    <WelcomeSlide playerName={playerName} partnerName={partnerName} />,
+    <WelcomeSlide playerName={playerName} partnerName={partnerName} roomCode={roomCode} />,
     <QuestionsSlide />,
     <LevelsSlide />,
     <EventsSlide />,
