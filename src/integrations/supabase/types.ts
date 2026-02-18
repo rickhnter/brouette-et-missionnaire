@@ -158,9 +158,13 @@ export type Database = {
           player1_name: string
           player2_connected: boolean | null
           player2_name: string | null
+          premium_unlocked: boolean
+          premium_unlocked_at: string | null
+          premium_unlocked_by: string | null
           room_code: string
           room_name: string | null
           status: string | null
+          stripe_payment_id: string | null
           updated_at: string
         }
         Insert: {
@@ -174,9 +178,13 @@ export type Database = {
           player1_name: string
           player2_connected?: boolean | null
           player2_name?: string | null
+          premium_unlocked?: boolean
+          premium_unlocked_at?: string | null
+          premium_unlocked_by?: string | null
           room_code: string
           room_name?: string | null
           status?: string | null
+          stripe_payment_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -190,9 +198,13 @@ export type Database = {
           player1_name?: string
           player2_connected?: boolean | null
           player2_name?: string | null
+          premium_unlocked?: boolean
+          premium_unlocked_at?: string | null
+          premium_unlocked_by?: string | null
           room_code?: string
           room_name?: string | null
           status?: string | null
+          stripe_payment_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -208,6 +220,53 @@ export type Database = {
             columns: ["current_question_id"]
             isOneToOne: false
             referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          completed_at: string | null
+          created_at: string
+          currency: string
+          id: string
+          player_name: string
+          session_id: string
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+        }
+        Insert: {
+          amount: number
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          player_name: string
+          session_id: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+        }
+        Update: {
+          amount?: number
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          player_name?: string
+          session_id?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "game_sessions"
             referencedColumns: ["id"]
           },
         ]
