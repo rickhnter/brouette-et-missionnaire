@@ -1,67 +1,55 @@
 
-# Tutoriel visible dès la création d'une room
+# Migration Supabase : Système Premium
 
-## Problème actuel
+## Objectif
 
-Le créateur de la room voit un écran "En attente de ton partenaire..." (`WaitingRoom`) jusqu'à ce que le second joueur se connecte. Le tutoriel ne se déclenche que lorsque les deux joueurs sont simultanément connectés, ce qui signifie que le créateur ne voit jamais le tutoriel ou le voit seulement une fraction de seconde.
+Créer une migration SQL qui prépare la base de données pour le système de paiement premium. Cela implique d'étendre la table `game_sessions` existante et de créer une nouvelle table `payments`.
 
-## Solution
+## Ce qui sera créé
 
-Modifier le flux de `gameState` pour que le créateur voit le tutoriel **immédiatement** après la création de la room, en parallèle de l'attente du partenaire. Le code de partage sera intégré dans le tutoriel (slide 1) pour que le joueur puisse partager le code tout en découvrant l'application.
+### 1. Colonnes ajoutées à `game_sessions`
 
-## Changements techniques
+| Colonne | Type | Description |
+|---|---|---|
+| `premium_unlocked` | boolean (default: false) | Indique si la room a débloqué le premium |
+| `premium_unlocked_by` | text (nullable) | Nom du joueur ayant payé |
+| `premium_unlocked_at` | timestamptz (nullable) | Date/heure du déblocage |
+| `stripe_payment_id` | text (nullable) | Référence au paiement Stripe |
 
-### 1. `src/pages/Index.tsx` — Modifier la transition vers `waiting`
+### 2. Nouvelle table `payments`
 
-Actuellement (ligne ~193) :
-```text
-useEffect: currentRoom + playerName + !gameState → setGameState('waiting')
-```
+| Colonne | Type | Description |
+|---|---|---|
+| `id` | uuid (PK) | Identifiant unique |
+| `session_id` | uuid (FK → game_sessions) | Room concernée |
+| `player_name` | text | Joueur qui a payé |
+| `amount` | integer | Montant en centimes (ex: 500 = 5€) |
+| `currency` | text (default: 'eur') | Devise |
+| `stripe_payment_intent_id` | text (unique) | ID du PaymentIntent Stripe |
+| `stripe_session_id` | text (nullable) | ID de la session Checkout Stripe |
+| `status` | text (default: 'pending') | État: pending / completed / failed |
+| `created_at` | timestamptz | Date de création |
+| `completed_at` | timestamptz (nullable) | Date de complétion |
 
-Nouveau comportement : si la room n'a pas encore de partenaire (`!currentRoom.player2_name`) ET pas de `current_question_id`, passer directement à `'tutorial'` au lieu de `'waiting'`.
+### 3. Index de performance
 
-```text
-if (!currentRoom.player2_name && !currentRoom.current_question_id) {
-  setGameState('tutorial');   // tutoriel dès la création
-} else {
-  setGameState('waiting');
-}
-```
+- `payments(session_id)` — récupérer les paiements d'une room
+- `payments(stripe_payment_intent_id)` — lookup depuis le webhook Stripe
+- `game_sessions(premium_unlocked)` — filtres éventuels sur le statut premium
 
-### 2. `src/pages/Index.tsx` — Modifier le `onComplete` du tutoriel pour le créateur seul
+### 4. Politiques RLS (Row Level Security)
 
-Quand le créateur clique "Commencer" à la fin du tutoriel :
-- Si le partenaire **n'est pas encore connecté** → passer à `'waiting'` (afficher l'écran d'attente habituel)
-- Si le partenaire **est déjà connecté** → démarrer la partie normalement (appeler `proceedToNextQuestion`)
+**Table `payments` :**
+- SELECT : accessible à tous (pour vérifier le statut depuis le client)
+- INSERT : accessible à tous (pour créer un paiement en attente)
 
-### 3. `src/components/TutorialScreen.tsx` — Afficher le code de room dans le slide 1
+**Table `game_sessions` (UPDATE déjà existante) :**
+- La politique `Sessions can be updated by anyone` couvre déjà les colonnes premium — aucune politique supplémentaire requise.
 
-Ajouter une prop optionnelle `roomCode?: string` au composant `TutorialScreen`. Dans le `WelcomeSlide`, si `roomCode` est fourni, afficher le code et un bouton de partage sous les noms des joueurs (même UI que dans `WaitingRoom`).
+## Fichier de migration
 
-Cela évite au créateur de rater le code de partage pendant qu'il lit le tutoriel.
+Le fichier sera nommé avec le timestamp actuel (format `YYYYMMDDHHMMSS`) suivi d'un UUID, conformément aux conventions existantes du projet.
 
-### 4. Garder la logique actuelle pour le partenaire qui rejoint
+## Aucun changement de code nécessaire dans cette étape
 
-Le joueur qui rejoint une nouvelle room passe toujours par le tutoriel via l'effet existant (ligne 200-220) qui détecte `player1_connected && player2_connected && !current_question_id`. Pas de changement ici.
-
-## Résumé des fichiers à modifier
-
-| Fichier | Modification |
-|---------|-------------|
-| `src/pages/Index.tsx` | Transition vers `'tutorial'` au lieu de `'waiting'` pour le créateur. Gérer le `onComplete` du tutoriel selon si le partenaire est connecté ou non. |
-| `src/components/TutorialScreen.tsx` | Ajouter prop `roomCode` optionnelle et l'afficher dans le premier slide. |
-
-## Flux après le fix
-
-```text
-Créateur :
-  Créer room → gameState = 'tutorial' (avec code de partage affiché)
-  → Swipe le tutoriel → clique "Commencer"
-    → Partenaire pas encore là : gameState = 'waiting'
-    → Partenaire déjà connecté : démarrage de la partie
-
-Partenaire :
-  Rejoindre room (nouvelle) → gameState = 'waiting'
-  → Realtime détecte player2_connected → gameState = 'tutorial'
-  → Tutoriel → Commencer → démarrage de la partie
-```
+Cette migration prépare uniquement la structure de données. L'intégration Stripe (edge functions, UI) fera l'objet d'une étape séparée.
