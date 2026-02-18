@@ -1,112 +1,112 @@
 
-# Création de PremiumPaywallScreen.tsx
+# Création de WaitingForPremiumScreen.tsx
 
 ## Objectif
 
-Créer un écran de paywall marketing ultra-optimisé pour la conversion, en suivant exactement les spécifications du brief. Le composant sera autonome, réutilisable, et préparé pour l'intégration Stripe au prochain prompt.
+Créer un écran simple et rassurant que voit le joueur 2 pendant que le créateur de la room débloque le premium. L'écran est purement informatif, sans interaction — le polling pour détecter `premium_unlocked` se fera dans `Index.tsx`.
+
+## Fichier à créer
+
+`src/components/WaitingForPremiumScreen.tsx`
+
+## Pattern suivi
+
+Le composant reprend exactement le même pattern que `WaitingForPartner.tsx` :
+- Fond : `min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200`
+- Card : `w-full max-w-md bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl`
+- Animations `framer-motion`
+- Contenu centré avec `text-center`
 
 ## Structure du composant
 
 ### Props
 
 ```typescript
-interface PremiumPaywallScreenProps {
-  playerName: string;
+interface WaitingForPremiumScreenProps {
+  creatorName: string;
   partnerName: string;
-  answeredQuestionsCount: number;
-  remainingQuestionsCount: number;
-  currentRoomId: string;
-  onPaymentSuccess: () => void;
-  onDismiss?: () => void;
 }
 ```
 
-`onDismiss` est ajouté (optionnel) pour permettre le bouton "Peut-être plus tard" de revenir en arrière — le parent décide quoi faire.
-
-### Architecture des sections (du haut vers le bas)
+### Sections (de haut en bas)
 
 ```text
-┌─────────────────────────────┐
-│  FloatingHearts (bg anim)   │
-│  ┌─────────────────────┐    │
-│  │  HEADER             │    │
-│  │  🔓 Continuez...    │    │
-│  │  Ne vous arrêtez... │    │
-│  ├─────────────────────┤    │
-│  │  PREUVE SOCIALE     │    │
-│  │  ✨ X moments       │    │
-│  ├─────────────────────┤    │
-│  │  BÉNÉFICES          │    │
-│  │  ✓ X questions      │    │
-│  │  ✓ Niveaux 3,4,5    │    │
-│  │  ✓ Actions spécial  │    │
-│  │  ✓ Historique       │    │
-│  ├─────────────────────┤    │
-│  │  ANCRAGE PRIX       │    │
-│  │  💝 Prix d'un café  │    │
-│  │  3,99€ (~~9,99~~)   │    │
-│  ├─────────────────────┤    │
-│  │  CTA PRINCIPAL      │    │
-│  │  [Débloquer - 3,99] │    │
-│  ├─────────────────────┤    │
-│  │  RÉASSURANCE        │    │
-│  │  🔐 Paiement Stripe │    │
-│  │  Satisfait/remboursé│    │
-│  ├─────────────────────┤    │
-│  │  Peut-être plus tard│    │
-│  └─────────────────────┘    │
-└─────────────────────────────┘
+┌─────────────────────────────────┐
+│  bg gradient rose               │
+│  ┌───────────────────────────┐  │
+│  │  Icône centrale animée 🔒 │  │
+│  │  (pulse/rotate lent)      │  │
+│  ├───────────────────────────┤  │
+│  │  Titre principal          │  │
+│  │  "{creatorName} complète  │  │
+│  │   une action"             │  │
+│  ├───────────────────────────┤  │
+│  │  Message explicatif       │  │
+│  │  "Pour continuer le jeu,  │  │
+│  │  {creatorName} doit       │  │
+│  │  débloquer les prochains  │  │
+│  │  niveaux."                │  │
+│  ├───────────────────────────┤  │
+│  │  Loader animé (Loader2)   │  │
+│  │  rose-500, animate-spin   │  │
+│  ├───────────────────────────┤  │
+│  │  Réassurance              │  │
+│  │  "Vous serez notifié(e)   │  │
+│  │   dès que ce sera fait 💝"│  │
+│  └───────────────────────────┘  │
+└─────────────────────────────────┘
 ```
 
 ## Détails d'implémentation
 
-### Animations (framer-motion)
+### Animation de l'icône 🔒
 
-- **Entrée du composant** : `motion.div` avec `initial={{ opacity: 0, y: 20 }}` → `animate={{ opacity: 1, y: 0 }}`, durée 0.5s
-- **Bouton CTA** : `whileHover={{ scale: 1.02 }}`, `whileTap={{ scale: 0.98 }}`
-- **Badge preuve sociale** : `initial={{ scale: 0.9 }}` → `animate={{ scale: 1 }}` avec un léger delay
-
-### Icône Lock → Heart au hover
-
-L'état local `isHovering` bascule entre `<Lock />` et `<Heart />` au survol du bouton CTA grâce à `onMouseEnter` / `onMouseLeave`.
-
-### État loading
+Utiliser `framer-motion` avec un `motion.div` animé en `scale` pulsant (comme les cercles concentriques dans `WaitingForPartner`), mais avec les mêmes cercles concentriques rose → pink autour de l'emoji 🔒 centré pour garder la cohérence visuelle.
 
 ```typescript
-const [isLoading, setIsLoading] = useState(false);
-
-const handlePayment = async () => {
-  setIsLoading(true);
-  // Pour l'instant : simulation courte puis callback
-  await new Promise(resolve => setTimeout(resolve, 800));
-  onPaymentSuccess();
-  setIsLoading(false);
-};
+// Cercles concentriques pulsants (repris de WaitingForPartner)
+<motion.div
+  className="absolute inset-0 bg-gradient-to-br from-rose-200 to-pink-200 rounded-full"
+  animate={{ scale: [1, 1.1, 1] }}
+  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+/>
+// + inset-4 et inset-8 avec delays 0.2 et 0.4
+// Au centre : emoji 🔒 en text-4xl
 ```
 
-Pendant le loading : spinner `animate-spin` + texte "Traitement en cours..." + bouton désactivé.
+### Loader Loader2
 
-### Styling clé
+```typescript
+import { Loader2 } from 'lucide-react';
 
-- **Fond** : `min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200`
-- **Card** : `shadow-2xl bg-white/90 backdrop-blur-sm border-rose-200 max-w-md w-full`
-- **Bouton CTA** : `bg-gradient-to-r from-rose-500 to-pink-600 text-white py-4 px-8 rounded-xl text-lg font-bold`
-- **Badge preuve sociale** : `bg-gradient-to-r from-rose-100 to-pink-100 border border-rose-200 rounded-full px-4 py-2`
-- **Prix barré** : `line-through text-muted-foreground text-sm`
-- **Prix principal** : `text-4xl font-black text-rose-700`
-- **Checkmarks** : couleur `text-rose-500` pour chaque item bénéfice
+<Loader2 className="h-8 w-8 text-rose-500 animate-spin mx-auto" />
+```
 
-### Icônes lucide-react utilisées
+### Apparition avec framer-motion
 
-- `Lock` / `Heart` — bouton CTA (toggle au hover)
-- `Check` — items bénéfices
-- `Shield` — section réassurance
-- `Star` — badge preuve sociale (optionnel)
+```typescript
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.5, ease: 'easeOut' }}
+>
+```
 
-## Fichier à créer
+## Typage des props
 
-- `src/components/PremiumPaywallScreen.tsx` — composant complet, autonome
+```typescript
+interface WaitingForPremiumScreenProps {
+  creatorName: string;
+  partnerName: string;   // disponible pour une personnalisation future ("Bonjour {partnerName}")
+}
+```
 
 ## Aucune modification d'autres fichiers dans ce prompt
 
-L'intégration dans `Index.tsx` (déclenchement du paywall au bon moment) et l'intégration Stripe seront traitées dans les prochains prompts, comme prévu.
+L'intégration dans `Index.tsx` (déclenchement de cet écran + polling `premium_unlocked`) sera gérée dans un prompt séparé.
+
+## Fichier à créer
+
+| Fichier | Action |
+|---|---|
+| `src/components/WaitingForPremiumScreen.tsx` | Créer |
