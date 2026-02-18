@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Heart, Check, Shield, Sparkles } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface PremiumPaywallScreenProps {
   playerName: string;
@@ -56,10 +57,19 @@ export const PremiumPaywallScreen = ({
 
   const handlePayment = async () => {
     setIsLoading(true);
-    // Simulation — Stripe sera intégré au prochain prompt
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    onPaymentSuccess();
-    setIsLoading(false);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { roomId: currentRoomId, playerName },
+      });
+      if (error || !data?.url) {
+        throw new Error(error?.message || 'Impossible de créer la session de paiement');
+      }
+      // Redirection vers Stripe Checkout — setIsLoading(false) non appelé car on quitte la page
+      window.location.href = data.url;
+    } catch (err: any) {
+      toast.error('Erreur lors du paiement : ' + err.message);
+      setIsLoading(false);
+    }
   };
 
   const benefitsList = benefits(remainingQuestionsCount);
