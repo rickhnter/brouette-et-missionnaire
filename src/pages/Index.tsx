@@ -147,9 +147,38 @@ const Index = () => {
           table: 'game_sessions',
           filter: `id=eq.${currentRoom.id}`
         },
-        (payload) => {
+        async (payload) => {
           if (payload.new) {
-            setCurrentRoom(payload.new as Room);
+            const updatedRoom = payload.new as Room;
+            setCurrentRoom(updatedRoom);
+
+            // Si la question active devient null pendant une partie, avancer automatiquement
+            if (
+              updatedRoom.status === 'playing' &&
+              updatedRoom.current_question_id === null &&
+              !updatedRoom.current_event_id
+            ) {
+              // Chercher la prochaine question disponible depuis le niveau courant
+              const level = updatedRoom.current_level ?? 1;
+              const { data: nextQuestions } = await supabase
+                .from('questions')
+                .select('id, level, sort_order')
+                .gte('level', level)
+                .order('level', { ascending: true })
+                .order('sort_order', { ascending: true })
+                .limit(1);
+
+              if (nextQuestions && nextQuestions.length > 0) {
+                const next = nextQuestions[0];
+                await supabase
+                  .from('game_sessions')
+                  .update({
+                    current_question_id: next.id,
+                    current_level: next.level,
+                  })
+                  .eq('id', updatedRoom.id);
+              }
+            }
           }
         }
       )
@@ -872,6 +901,23 @@ const Index = () => {
           onLogout={handleLogout}
         />
       </>
+    );
+  }
+
+  // Fallback : état en cours de partie mais question non chargée (suppression, race condition)
+  if (currentRoom && playerName && gameState === 'question' && !currentQuestion) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-background px-6 text-center">
+        <div className="text-4xl">⏳</div>
+        <p className="text-foreground/80 text-lg font-medium">Chargement de la prochaine question…</p>
+        <p className="text-muted-foreground text-sm">Si cela prend trop longtemps, actualise la page.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
+        >
+          Actualiser
+        </button>
+      </div>
     );
   }
 

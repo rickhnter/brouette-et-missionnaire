@@ -437,10 +437,44 @@ const Questions = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await supabase
-        .from('game_sessions')
-        .update({ current_question_id: null })
-        .eq('current_question_id', id);
+      // Récupérer la question à supprimer pour connaître son sort_order et level
+      const { data: questionData } = await supabase
+        .from('questions')
+        .select('id, sort_order, level')
+        .eq('id', id)
+        .single();
+
+      // Chercher la question suivante (même niveau ou supérieur, sort_order supérieur)
+      let nextQuestion: { id: string; level: number } | null = null;
+      if (questionData) {
+        const { data: nextQuestions } = await supabase
+          .from('questions')
+          .select('id, level, sort_order')
+          .or(`level.gt.${questionData.level},and(level.eq.${questionData.level},sort_order.gt.${questionData.sort_order ?? 0})`)
+          .order('level', { ascending: true })
+          .order('sort_order', { ascending: true })
+          .limit(1);
+
+        if (nextQuestions && nextQuestions.length > 0) {
+          nextQuestion = nextQuestions[0];
+        }
+      }
+
+      // Mettre à jour les sessions actives : assigner la question suivante (ou null si aucune)
+      if (nextQuestion) {
+        await supabase
+          .from('game_sessions')
+          .update({
+            current_question_id: nextQuestion.id,
+            current_level: nextQuestion.level,
+          })
+          .eq('current_question_id', id);
+      } else {
+        await supabase
+          .from('game_sessions')
+          .update({ current_question_id: null })
+          .eq('current_question_id', id);
+      }
 
       const { error } = await supabase
         .from('questions')
