@@ -139,6 +139,21 @@ const Index = () => {
     checkExistingRooms();
   }, [getLocalRoomEntries]);
 
+  // Handle Stripe Checkout return (success or cancelled)
+  useEffect(() => {
+    const premiumParam = searchParams.get('premium');
+    if (premiumParam === 'success') {
+      toast.success('🎉 Paiement réussi ! Le premium est en cours d\'activation...');
+      setSearchParams({});
+    } else if (premiumParam === 'cancelled') {
+      toast.info('Paiement annulé. Vous pouvez réessayer quand vous voulez.');
+      setSearchParams({});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
+
   // Room realtime subscription
   useEffect(() => {
     if (!currentRoom?.id) return;
