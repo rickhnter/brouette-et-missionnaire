@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart } from 'lucide-react';
+import { Heart, Lock } from 'lucide-react';
 
 interface LevelSelectionProps {
   levels: number[];
   onSelectLevel: (level: number) => void;
   playerName: string;
   partnerName: string;
+  isPremium?: boolean;
 }
 
 const levelLabels: Record<number, { name: string; icon: string; description: string }> = {
@@ -21,11 +22,12 @@ export const LevelSelection = ({
   levels,
   onSelectLevel,
   playerName,
-  partnerName
+  partnerName,
+  isPremium = false,
 }: LevelSelectionProps) => {
   // Afficher tous les niveaux de 1 à 5, même s'ils n'ont pas de questions
   const allLevels = [1, 2, 3, 4, 5];
-  
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4">
       <Card className="w-full max-w-lg bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
@@ -43,24 +45,37 @@ export const LevelSelection = ({
         <CardContent className="space-y-4">
           {allLevels.map((level) => {
             const hasQuestions = levels.includes(level);
+            const isPremiumLevel = level >= 3;
+            const isLocked = isPremiumLevel && !isPremium;
+            const isDisabled = !hasQuestions || isLocked;
             const info = levelLabels[level];
-            
+
             return (
               <Button
                 key={level}
                 variant="outline"
                 className="w-full h-16 text-lg font-medium border-rose-300 text-rose-700 hover:bg-rose-50 hover:border-rose-400 transition-all justify-start gap-4 disabled:opacity-50"
                 onClick={() => onSelectLevel(level)}
-                disabled={!hasQuestions}
+                disabled={isDisabled}
               >
                 <span className="text-2xl">{info.icon}</span>
                 <div className="flex flex-col items-start">
                   <span>{info.name}</span>
                   <span className="text-sm text-rose-500">{info.description}</span>
                 </div>
-                {!hasQuestions && (
-                  <span className="ml-auto text-xs text-rose-400">Bientôt</span>
-                )}
+                <div className="ml-auto flex items-center gap-1.5">
+                  {isLocked && (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-rose-400" />
+                      <span className="text-xs font-semibold text-rose-500 bg-rose-100 border border-rose-200 rounded-full px-2 py-0.5">
+                        Premium
+                      </span>
+                    </>
+                  )}
+                  {!isLocked && !hasQuestions && (
+                    <span className="text-xs text-rose-400">Bientôt</span>
+                  )}
+                </div>
               </Button>
             );
           })}
