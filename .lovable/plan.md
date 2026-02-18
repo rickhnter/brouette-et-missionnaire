@@ -1,55 +1,112 @@
 
-# Migration Supabase : Système Premium
+# Création de PremiumPaywallScreen.tsx
 
 ## Objectif
 
-Créer une migration SQL qui prépare la base de données pour le système de paiement premium. Cela implique d'étendre la table `game_sessions` existante et de créer une nouvelle table `payments`.
+Créer un écran de paywall marketing ultra-optimisé pour la conversion, en suivant exactement les spécifications du brief. Le composant sera autonome, réutilisable, et préparé pour l'intégration Stripe au prochain prompt.
 
-## Ce qui sera créé
+## Structure du composant
 
-### 1. Colonnes ajoutées à `game_sessions`
+### Props
 
-| Colonne | Type | Description |
-|---|---|---|
-| `premium_unlocked` | boolean (default: false) | Indique si la room a débloqué le premium |
-| `premium_unlocked_by` | text (nullable) | Nom du joueur ayant payé |
-| `premium_unlocked_at` | timestamptz (nullable) | Date/heure du déblocage |
-| `stripe_payment_id` | text (nullable) | Référence au paiement Stripe |
+```typescript
+interface PremiumPaywallScreenProps {
+  playerName: string;
+  partnerName: string;
+  answeredQuestionsCount: number;
+  remainingQuestionsCount: number;
+  currentRoomId: string;
+  onPaymentSuccess: () => void;
+  onDismiss?: () => void;
+}
+```
 
-### 2. Nouvelle table `payments`
+`onDismiss` est ajouté (optionnel) pour permettre le bouton "Peut-être plus tard" de revenir en arrière — le parent décide quoi faire.
 
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | uuid (PK) | Identifiant unique |
-| `session_id` | uuid (FK → game_sessions) | Room concernée |
-| `player_name` | text | Joueur qui a payé |
-| `amount` | integer | Montant en centimes (ex: 500 = 5€) |
-| `currency` | text (default: 'eur') | Devise |
-| `stripe_payment_intent_id` | text (unique) | ID du PaymentIntent Stripe |
-| `stripe_session_id` | text (nullable) | ID de la session Checkout Stripe |
-| `status` | text (default: 'pending') | État: pending / completed / failed |
-| `created_at` | timestamptz | Date de création |
-| `completed_at` | timestamptz (nullable) | Date de complétion |
+### Architecture des sections (du haut vers le bas)
 
-### 3. Index de performance
+```text
+┌─────────────────────────────┐
+│  FloatingHearts (bg anim)   │
+│  ┌─────────────────────┐    │
+│  │  HEADER             │    │
+│  │  🔓 Continuez...    │    │
+│  │  Ne vous arrêtez... │    │
+│  ├─────────────────────┤    │
+│  │  PREUVE SOCIALE     │    │
+│  │  ✨ X moments       │    │
+│  ├─────────────────────┤    │
+│  │  BÉNÉFICES          │    │
+│  │  ✓ X questions      │    │
+│  │  ✓ Niveaux 3,4,5    │    │
+│  │  ✓ Actions spécial  │    │
+│  │  ✓ Historique       │    │
+│  ├─────────────────────┤    │
+│  │  ANCRAGE PRIX       │    │
+│  │  💝 Prix d'un café  │    │
+│  │  3,99€ (~~9,99~~)   │    │
+│  ├─────────────────────┤    │
+│  │  CTA PRINCIPAL      │    │
+│  │  [Débloquer - 3,99] │    │
+│  ├─────────────────────┤    │
+│  │  RÉASSURANCE        │    │
+│  │  🔐 Paiement Stripe │    │
+│  │  Satisfait/remboursé│    │
+│  ├─────────────────────┤    │
+│  │  Peut-être plus tard│    │
+│  └─────────────────────┘    │
+└─────────────────────────────┘
+```
 
-- `payments(session_id)` — récupérer les paiements d'une room
-- `payments(stripe_payment_intent_id)` — lookup depuis le webhook Stripe
-- `game_sessions(premium_unlocked)` — filtres éventuels sur le statut premium
+## Détails d'implémentation
 
-### 4. Politiques RLS (Row Level Security)
+### Animations (framer-motion)
 
-**Table `payments` :**
-- SELECT : accessible à tous (pour vérifier le statut depuis le client)
-- INSERT : accessible à tous (pour créer un paiement en attente)
+- **Entrée du composant** : `motion.div` avec `initial={{ opacity: 0, y: 20 }}` → `animate={{ opacity: 1, y: 0 }}`, durée 0.5s
+- **Bouton CTA** : `whileHover={{ scale: 1.02 }}`, `whileTap={{ scale: 0.98 }}`
+- **Badge preuve sociale** : `initial={{ scale: 0.9 }}` → `animate={{ scale: 1 }}` avec un léger delay
 
-**Table `game_sessions` (UPDATE déjà existante) :**
-- La politique `Sessions can be updated by anyone` couvre déjà les colonnes premium — aucune politique supplémentaire requise.
+### Icône Lock → Heart au hover
 
-## Fichier de migration
+L'état local `isHovering` bascule entre `<Lock />` et `<Heart />` au survol du bouton CTA grâce à `onMouseEnter` / `onMouseLeave`.
 
-Le fichier sera nommé avec le timestamp actuel (format `YYYYMMDDHHMMSS`) suivi d'un UUID, conformément aux conventions existantes du projet.
+### État loading
 
-## Aucun changement de code nécessaire dans cette étape
+```typescript
+const [isLoading, setIsLoading] = useState(false);
 
-Cette migration prépare uniquement la structure de données. L'intégration Stripe (edge functions, UI) fera l'objet d'une étape séparée.
+const handlePayment = async () => {
+  setIsLoading(true);
+  // Pour l'instant : simulation courte puis callback
+  await new Promise(resolve => setTimeout(resolve, 800));
+  onPaymentSuccess();
+  setIsLoading(false);
+};
+```
+
+Pendant le loading : spinner `animate-spin` + texte "Traitement en cours..." + bouton désactivé.
+
+### Styling clé
+
+- **Fond** : `min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200`
+- **Card** : `shadow-2xl bg-white/90 backdrop-blur-sm border-rose-200 max-w-md w-full`
+- **Bouton CTA** : `bg-gradient-to-r from-rose-500 to-pink-600 text-white py-4 px-8 rounded-xl text-lg font-bold`
+- **Badge preuve sociale** : `bg-gradient-to-r from-rose-100 to-pink-100 border border-rose-200 rounded-full px-4 py-2`
+- **Prix barré** : `line-through text-muted-foreground text-sm`
+- **Prix principal** : `text-4xl font-black text-rose-700`
+- **Checkmarks** : couleur `text-rose-500` pour chaque item bénéfice
+
+### Icônes lucide-react utilisées
+
+- `Lock` / `Heart` — bouton CTA (toggle au hover)
+- `Check` — items bénéfices
+- `Shield` — section réassurance
+- `Star` — badge preuve sociale (optionnel)
+
+## Fichier à créer
+
+- `src/components/PremiumPaywallScreen.tsx` — composant complet, autonome
+
+## Aucune modification d'autres fichiers dans ce prompt
+
+L'intégration dans `Index.tsx` (déclenchement du paywall au bon moment) et l'intégration Stripe seront traitées dans les prochains prompts, comme prévu.
