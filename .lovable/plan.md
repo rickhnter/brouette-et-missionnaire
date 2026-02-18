@@ -1,172 +1,143 @@
 
-# Intégration Stripe pour le paiement premium
+# Finaliser l'intégration premium — analyse et corrections
 
-## Contexte et analyse
+## État actuel (déjà implémenté)
 
-- La table `payments` existe déjà en base de données avec toutes les colonnes nécessaires (`stripe_session_id`, `stripe_payment_intent_id`, `status`, `amount`, etc.)
-- La table `game_sessions` a déjà `premium_unlocked`, `premium_unlocked_by`, `premium_unlocked_at`, `stripe_payment_id`
-- Les secrets Stripe (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) ne sont pas encore configurés — ils doivent être ajoutés avant de déployer les fonctions
-- La clé publique Stripe doit être ajoutée dans le code frontend (elle est publique, donc on peut la mettre directement dans le code)
-- Le package `@stripe/stripe-js` sera installé pour la redirection vers Stripe Checkout
+Après lecture complète du code, la majorité des éléments sont déjà en place :
 
-## Flux de paiement
+- `PremiumPaywallScreen.tsx` appelle déjà `create-checkout-session` et redirige vers `window.location.href = data.url`. ✅
+- `Index.tsx` gère déjà `?premium=success` et `?premium=cancelled` via `useSearchParams` (lignes 142-153). ✅
+- Les états `premium-paywall` et `waiting-premium` et leurs rendus sont en place (lignes 1041-1075). ✅
+- Le `useEffect` de détection niveau 3 sans premium est actif (lignes 477-491). ✅
+- Le polling du joueur en attente est actif (lignes 493-511). ✅
 
-```text
-[PremiumPaywallScreen]
-        |
-        | Clic "Débloquer"
-        v
-[Edge function: create-checkout-session]
-        |
-        | → Crée session Stripe Checkout
-        | ← Retourne l'URL de paiement Stripe
-        |
-        v
-[Redirection vers Stripe Checkout]
-        |
-        | Paiement réussi
-        v
-[Retour sur le site: /?premium=success&session_id=xxx]
-        |
-        | (webhook Stripe en parallèle)
-        v
-[Edge function: stripe-webhook]
-        | checkout.session.completed
-        | → Met à jour game_sessions.premium_unlocked = true
-        | → Insère dans payments
-        v
-[Index.tsx détecte premium=success dans l'URL]
-        | → Confirme visuellement
-        | → polling détecte premium_unlocked = true
-        v
-[Jeu reprend normalement]
-```
+## Problèmes identifiés
 
-## Pré-requis : secrets à ajouter
+### 1. Anti-pattern : `setGameState` appelé pendant le rendu (ligne 866-874)
 
-Avant d'écrire le code, deux secrets Stripe doivent être configurés :
-1. `STRIPE_SECRET_KEY` : clé secrète depuis le dashboard Stripe (commence par `sk_test_` ou `sk_live_`)
-2. `STRIPE_WEBHOOK_SECRET` : secret du webhook (commence par `whsec_`) — obtenu après avoir créé l'endpoint webhook dans Stripe
-
-Je demanderai ces secrets avec l'outil `add_secret` lors de l'implémentation.
-
-## Fichiers à créer / modifier
-
-### 1. `supabase/functions/create-checkout-session/index.ts` (CRÉER)
-
-Edge function qui :
-- Reçoit `{ roomId, playerName }` en POST
-- Crée une session Stripe Checkout (mode `payment`, 3,99€)
-- Passe `game_session_id` et `player_name` dans les métadonnées Stripe
-- Les URLs de retour incluent `?premium=success` (succès) et `?premium=cancelled` (annulation)
-- Retourne `{ url }` pour la redirection
-
-Structure clé :
 ```typescript
-const session = await stripe.checkout.sessions.create({
-  payment_method_types: ['card'],
-  line_items: [{ price_data: { currency: 'eur', unit_amount: 399, ... }, quantity: 1 }],
-  mode: 'payment',
-  success_url: `${origin}/?premium=success`,
-  cancel_url: `${origin}/?premium=cancelled`,
-  metadata: { game_session_id: roomId, player_name: playerName },
-});
-```
-
-Note technique : utilise `verify_jwt = false` dans `config.toml` (pattern du projet), pas d'auth requise car le jeu n'a pas de comptes utilisateurs.
-
-### 2. `supabase/functions/stripe-webhook/index.ts` (CRÉER)
-
-Webhook Stripe qui :
-- Vérifie la signature Stripe (`stripe.webhooks.constructEvent`)
-- Sur `checkout.session.completed` :
-  - Met à jour `game_sessions` : `premium_unlocked = true`, `premium_unlocked_by`, `premium_unlocked_at`, `stripe_payment_id`
-  - Insère dans `payments` : statut `completed`, montants, IDs Stripe
-- Utilise `SUPABASE_SERVICE_ROLE_KEY` pour écrire en base (contournement RLS non nécessaire ici car les policies sont publiques, mais c'est une bonne pratique pour les webhooks)
-- Pas de CORS headers (appelé directement par Stripe, pas depuis le navigateur)
-
-### 3. `supabase/config.toml` (MODIFIER)
-
-Ajouter les entrées pour les deux nouvelles fonctions :
-```toml
-[functions.create-checkout-session]
-verify_jwt = false
-
-[functions.stripe-webhook]
-verify_jwt = false
-```
-
-### 4. `src/components/PremiumPaywallScreen.tsx` (MODIFIER)
-
-Remplacer la simulation `setTimeout` par un vrai appel à l'edge function :
-```typescript
-const handlePayment = async () => {
-  setIsLoading(true);
-  try {
-    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-      body: { roomId: currentRoomId, playerName }
-    });
-    if (error || !data?.url) throw new Error(error?.message || 'Erreur');
-    window.location.href = data.url; // Redirection vers Stripe Checkout
-  } catch (err: any) {
-    toast.error('Erreur lors du paiement : ' + err.message);
-    setIsLoading(false);
+// PROBLÈME — appel de setGameState dans le corps du rendu
+if (gameState === 'question' && currentQuestion && currentQuestion.level >= 3
+    && currentRoom && !currentRoom.premium_unlocked && !currentEventId) {
+  if (playerName === currentRoom.player1_name) {
+    setGameState('premium-paywall'); // ← INTERDIT dans le rendu
+  } else {
+    setGameState('waiting-premium');
   }
-  // Note: setIsLoading(false) non appelé après succès car on redirige
-};
+  return null;
+}
 ```
 
-Import `supabase` et `toast` ajoutés au composant. La prop `currentRoomId` est déjà présente.
+React interdit de mettre à jour l'état pendant le rendu. Le `useEffect` à la ligne 477 gère déjà cette détection correctement. **Ce bloc doit être supprimé** — il est redondant et provoque des warnings/comportements indéfinis.
 
-### 5. `src/pages/Index.tsx` (MODIFIER)
+### 2. `LevelSelection.tsx` n'a pas de protection visuelle premium
 
-Gérer le retour depuis Stripe Checkout :
-- Lire le paramètre URL `?premium=success` ou `?premium=cancelled` avec `useSearchParams` (déjà importé)
-- Si `premium=success` : afficher un toast de succès et nettoyer l'URL
-- Si `premium=cancelled` : afficher un toast d'info
-- Le polling `waiting-premium` existant (toutes les 2s) détectera automatiquement `premium_unlocked = true`
+Ce composant affiche les niveaux 1-5 mais n'est pas encore importé dans `Index.tsx`. Il faut :
+- Ajouter une prop `isPremium?: boolean`
+- Afficher un cadenas 🔒 et badge "Premium" sur les niveaux 3-5 quand non débloqué
+- Désactiver le clic sur ces niveaux (le composant n'est pas encore utilisé dans le flux principal, mais il peut l'être à l'avenir)
+
+### 3. Fichier `src/lib/premiumUtils.ts` manquant
+
+Le helper utilitaire demandé n'existe pas encore.
+
+### 4. Logs de debug manquants
+
+Aucun `console.log` stratégique dans les chemins critiques.
+
+## Modifications à apporter
+
+### Fichier 1 : `src/pages/Index.tsx`
+
+**Supprimer le bloc render-guard (lignes 865-874)** — le `useEffect` existant (ligne 477) gère déjà la transition vers `premium-paywall` / `waiting-premium` quand `current_level >= 3` et `!premium_unlocked`. Supprimer le bloc redondant élimine l'anti-pattern.
+
+**Ajouter des logs de debug** à 3 endroits :
+- Quand le `useEffect` de détection premium se déclenche (ligne 478)
+- Quand le polling détecte `premium_unlocked = true` (ligne 503)
+- Quand le retour Stripe est détecté (ligne 144)
+
+**Améliorer le `useEffect` de retour Stripe** : après `?premium=success`, forcer un re-fetch de la room pour détecter `premium_unlocked` immédiatement sans attendre le prochain cycle du polling :
 
 ```typescript
 useEffect(() => {
   const premiumParam = searchParams.get('premium');
   if (premiumParam === 'success') {
-    toast.success('🎉 Paiement réussi ! Le premium va être activé...');
-    setSearchParams({}); // Nettoyer l'URL
+    console.log('[Premium] Retour Stripe — succès détecté');
+    toast.success('🎉 Paiement réussi ! Le premium est en cours d\'activation...');
+    setSearchParams({});
+    // Force un re-fetch immédiat de la room si on est dans une session active
+    if (currentRoom?.id) {
+      supabase
+        .from('game_sessions')
+        .select('*')
+        .eq('id', currentRoom.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setCurrentRoom(data as Room);
+        });
+    }
   } else if (premiumParam === 'cancelled') {
+    console.log('[Premium] Retour Stripe — annulation');
     toast.info('Paiement annulé. Vous pouvez réessayer quand vous voulez.');
     setSearchParams({});
   }
+// eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
 ```
 
-## Configuration webhook Stripe (instructions pour l'utilisateur)
+Note : `currentRoom` n'est pas dans les dépendances intentionnellement (effet de montage uniquement).
 
-Une fois les fonctions déployées, l'URL du webhook à configurer dans le dashboard Stripe sera :
+### Fichier 2 : `src/lib/premiumUtils.ts` (CRÉER)
+
+```typescript
+import { Room } from '@/hooks/useRoom';
+
+export const isPremiumUnlocked = (room: Room | null): boolean => {
+  return room?.premium_unlocked === true;
+};
+
+export const canAccessLevel = (level: number, room: Room | null): boolean => {
+  if (level <= 2) return true;
+  return isPremiumUnlocked(room);
+};
+
+export const getPremiumPrice = (): string => {
+  return '3,99€';
+};
+
+export const getPremiumPriceInCents = (): number => {
+  return 399;
+};
 ```
-https://soeaybmnzinytliqdzao.supabase.co/functions/v1/stripe-webhook
-```
-Événement à écouter : `checkout.session.completed`
 
-## Ordre d'implémentation
+### Fichier 3 : `src/components/LevelSelection.tsx` (MODIFIER)
 
-1. Demander `STRIPE_SECRET_KEY` via `add_secret`
-2. Demander `STRIPE_WEBHOOK_SECRET` via `add_secret`
-3. Créer `supabase/functions/create-checkout-session/index.ts`
-4. Créer `supabase/functions/stripe-webhook/index.ts`
-5. Modifier `supabase/config.toml` pour les deux nouvelles fonctions
-6. Modifier `PremiumPaywallScreen.tsx` pour appeler l'edge function
-7. Modifier `Index.tsx` pour gérer le retour Stripe
+Ajouter la prop `isPremium` et l'affichage visuel :
 
-## Note sur `@stripe/stripe-js`
-
-Ce package n'est **pas nécessaire** pour notre implémentation. On utilise Stripe Checkout (redirection vers la page hébergée par Stripe), donc on n'a pas besoin du SDK JS Stripe côté client. La seule chose côté client est `window.location.href = data.url` pour la redirection. Cela simplifie l'implémentation.
+- Prop `isPremium?: boolean` (optionnelle, défaut `false`)
+- Import `Lock` depuis `lucide-react`
+- Les niveaux 3-5 : si `!isPremium`, désactiver le bouton + afficher un cadenas à droite + badge rose "Premium" au lieu de "Bientôt"
+- Les niveaux 3-5 : si `isPremium`, comportement normal (pas de désactivation)
+- Les niveaux 1-2 : comportement inchangé
 
 ## Résumé des fichiers
 
-| Fichier | Action |
-|---|---|
-| `supabase/functions/create-checkout-session/index.ts` | Créer |
-| `supabase/functions/stripe-webhook/index.ts` | Créer |
-| `supabase/config.toml` | Modifier |
-| `src/components/PremiumPaywallScreen.tsx` | Modifier (brancher sur l'edge function) |
-| `src/pages/Index.tsx` | Modifier (gérer retour Stripe via URL params) |
+| Fichier | Action | Impact |
+|---|---|---|
+| `src/pages/Index.tsx` | Supprimer le render-guard + ajouter logs + améliorer retour Stripe | Correction anti-pattern React |
+| `src/lib/premiumUtils.ts` | Créer le helper utilitaire | Nouveau fichier |
+| `src/components/LevelSelection.tsx` | Ajouter protection visuelle premium | UI/UX |
+
+## Ordre d'implémentation
+
+1. Créer `src/lib/premiumUtils.ts`
+2. Modifier `src/components/LevelSelection.tsx` (ajouter `isPremium` prop + UI)
+3. Modifier `src/pages/Index.tsx` (supprimer render-guard, améliorer retour Stripe, ajouter logs)
+
+## Note sur `@stripe/stripe-js`
+
+Ce package **n'est pas nécessaire** pour notre flux (Stripe Checkout avec redirection). La ligne `window.location.href = data.url` dans `PremiumPaywallScreen.tsx` est suffisante. Ne pas installer ce package inutilement.
+
+## Note sur `getNextQuestion` et `isPremium`
+
+La protection est correctement assurée par le `useEffect` de détection (ligne 477-491) : dès que `current_level >= 3` et `!premium_unlocked`, l'état passe à `premium-paywall` ou `waiting-premium`, empêchant toute interaction avec les questions. Modifier la signature de `getNextQuestion` pour ajouter `isPremium` serait une duplication défensive non nécessaire qui risquerait de casser les appels existants.
