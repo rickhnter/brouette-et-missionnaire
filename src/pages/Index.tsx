@@ -143,9 +143,23 @@ const Index = () => {
   useEffect(() => {
     const premiumParam = searchParams.get('premium');
     if (premiumParam === 'success') {
+      console.log('[Premium] Retour Stripe — succès détecté');
       toast.success('🎉 Paiement réussi ! Le premium est en cours d\'activation...');
       setSearchParams({});
+      // Force un re-fetch immédiat de la room pour détecter premium_unlocked sans attendre le polling
+      if (currentRoom?.id) {
+        console.log('[Premium] Re-fetch immédiat de la room', currentRoom.id);
+        supabase
+          .from('game_sessions')
+          .select('*')
+          .eq('id', currentRoom.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data) setCurrentRoom(data as Room);
+          });
+      }
     } else if (premiumParam === 'cancelled') {
+      console.log('[Premium] Retour Stripe — annulation');
       toast.info('Paiement annulé. Vous pouvez réessayer quand vous voulez.');
       setSearchParams({});
     }
@@ -483,9 +497,12 @@ const Index = () => {
     const activeGameStates: GameState[] = ['question', 'waiting-partner', 'reveal'];
     if (!gameState || !activeGameStates.includes(gameState)) return;
 
+    console.log('[Premium] Niveau 3+ sans premium détecté — level:', currentRoom.current_level, '— player:', playerName);
     if (playerName === currentRoom.player1_name) {
+      console.log('[Premium] → Affichage du paywall pour player1');
       setGameState('premium-paywall');
     } else {
+      console.log('[Premium] → Affichage de l\'écran d\'attente pour player2');
       setGameState('waiting-premium');
     }
   }, [currentRoom?.current_level, currentRoom?.premium_unlocked, playerName, gameState]);
@@ -501,6 +518,7 @@ const Index = () => {
         .eq('id', currentRoom.id)
         .maybeSingle();
       if (data?.premium_unlocked) {
+        console.log('[Premium] premium_unlocked = true détecté via polling — reprise du jeu');
         toast.success('🎉 Premium débloqué ! Continuons le jeu !');
         setGameState('question');
       }
@@ -862,16 +880,7 @@ const Index = () => {
     );
   }
 
-  // Guard: block level 3+ questions without premium
-  if (gameState === 'question' && currentQuestion && currentQuestion.level >= 3
-      && currentRoom && !currentRoom.premium_unlocked && !currentEventId) {
-    if (playerName === currentRoom.player1_name) {
-      setGameState('premium-paywall');
-    } else {
-      setGameState('waiting-premium');
-    }
-    return null;
-  }
+
 
   if (gameState === 'question' && currentQuestion && !currentEventId) {
     return (
