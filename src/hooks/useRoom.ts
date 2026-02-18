@@ -14,6 +14,10 @@ export interface Room {
   current_question_id: string | null;
   current_event_id: string | null;
   event_player_name: string | null;
+  premium_unlocked: boolean;
+  premium_unlocked_by: string | null;
+  premium_unlocked_at: string | null;
+  stripe_payment_id: string | null;
   created_at: string;
   updated_at: string;
 }

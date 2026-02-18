@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RoomHomeScreen } from '@/components/RoomHomeScreen';
 import { CreateRoomScreen } from '@/components/CreateRoomScreen';
@@ -15,12 +15,15 @@ import { EventScreen } from '@/components/events/EventScreen';
 import { PartnerEventNotification } from '@/components/events/PartnerEventNotification';
 import { LevelUpAnimation } from '@/components/LevelUpAnimation';
 import { TutorialScreen } from '@/components/TutorialScreen';
+import { PremiumPaywallScreen } from '@/components/PremiumPaywallScreen';
+import { WaitingForPremiumScreen } from '@/components/WaitingForPremiumScreen';
 import { useRoom, Room } from '@/hooks/useRoom';
 import { useQuestions } from '@/hooks/useQuestions';
 import { useAnswers } from '@/hooks/useAnswers';
 import { useGameEvents, GameEvent } from '@/hooks/useGameEvents';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 type RoomState = 'home' | 'create' | 'join' | 'my-rooms';
 
@@ -36,7 +39,9 @@ type GameState =
   | 'event-waiting'
   | 'event-reveal'
   | 'partner-event-waiting'
-  | 'partner-event-notification';
+  | 'partner-event-notification'
+  | 'premium-paywall'
+  | 'waiting-premium';
 
 interface RevealData {
   questionId: string;
@@ -65,6 +70,7 @@ const Index = () => {
   const [levelUpLevel, setLevelUpLevel] = useState<number>(1);
   const answeredQuestionsCount = useRef(0);
   const answeredQuestionsInitialized = useRef(false);
+  const [answeredCountForPaywall, setAnsweredCountForPaywall] = useState(0);
 
   const { 
     loading: roomLoading, 
@@ -438,6 +444,79 @@ const Index = () => {
     prevPartnerNotif.current = gameState === 'partner-event-notification';
   }, [gameState, partnerEvent, partnerName, notifyPartner]);
 
+  // Load answered count when paywall is displayed
+  useEffect(() => {
+    if (gameState !== 'premium-paywall' || !currentRoom?.id) return;
+    supabase
+      .from('answers')
+      .select('question_id')
+      .eq('session_id', currentRoom.id)
+      .then(({ data }) => {
+        if (data) {
+          const unique = new Set(data.map(a => a.question_id));
+          setAnsweredCountForPaywall(unique.size);
+        }
+      });
+  }, [gameState, currentRoom?.id]);
+
+  // Detect level 3+ without premium — redirect to paywall
+  useEffect(() => {
+    if (!currentRoom || !playerName) return;
+    if (!currentRoom.current_level || currentRoom.current_level < 3) return;
+    if (currentRoom.premium_unlocked) return;
+
+    const activeGameStates: GameState[] = ['question', 'waiting-partner', 'reveal'];
+    if (!gameState || !activeGameStates.includes(gameState)) return;
+
+    if (playerName === currentRoom.player1_name) {
+      setGameState('premium-paywall');
+    } else {
+      setGameState('waiting-premium');
+    }
+  }, [currentRoom?.current_level, currentRoom?.premium_unlocked, playerName, gameState]);
+
+  // Polling for waiting-premium: detect when premium is unlocked
+  useEffect(() => {
+    if (gameState !== 'waiting-premium' || !currentRoom?.id) return;
+
+    const checkPremiumUnlocked = async () => {
+      const { data } = await supabase
+        .from('game_sessions')
+        .select('premium_unlocked')
+        .eq('id', currentRoom.id)
+        .maybeSingle();
+      if (data?.premium_unlocked) {
+        toast.success('🎉 Premium débloqué ! Continuons le jeu !');
+        setGameState('question');
+      }
+    };
+
+    const interval = setInterval(checkPremiumUnlocked, 2000);
+    return () => clearInterval(interval);
+  }, [gameState, currentRoom?.id]);
+
+  // Calculate remaining premium questions
+  const calculateRemainingQuestions = useCallback(() => {
+    return questions.filter(q => q.level >= 3).length;
+  }, [questions]);
+
+  // Handle successful payment
+  const handlePaymentSuccess = useCallback(async () => {
+    if (!currentRoom || !playerName) return;
+    const { error } = await supabase
+      .from('game_sessions')
+      .update({
+        premium_unlocked: true,
+        premium_unlocked_by: playerName,
+        premium_unlocked_at: new Date().toISOString()
+      })
+      .eq('id', currentRoom.id);
+    if (!error) {
+      toast.success('🎉 Premium débloqué ! Profitez de toutes les questions !');
+      setGameState('question');
+    }
+  }, [currentRoom, playerName]);
+
   const startGame = async () => {
     if (!currentRoom?.id) return;
 
@@ -768,6 +847,17 @@ const Index = () => {
     );
   }
 
+  // Guard: block level 3+ questions without premium
+  if (gameState === 'question' && currentQuestion && currentQuestion.level >= 3
+      && currentRoom && !currentRoom.premium_unlocked && !currentEventId) {
+    if (playerName === currentRoom.player1_name) {
+      setGameState('premium-paywall');
+    } else {
+      setGameState('waiting-premium');
+    }
+    return null;
+  }
+
   if (gameState === 'question' && currentQuestion && !currentEventId) {
     return (
       <>
@@ -930,6 +1020,42 @@ const Index = () => {
           Actualiser
         </button>
       </div>
+    );
+  }
+
+  if (gameState === 'premium-paywall' && currentRoom && playerName) {
+    return (
+      <>
+        <GameNavigation 
+          playerName={playerName} 
+          onShowHistory={handleShowHistory} 
+          onLogout={handleLogout} 
+        />
+        <PremiumPaywallScreen
+          playerName={playerName}
+          partnerName={partnerName || ''}
+          answeredQuestionsCount={answeredCountForPaywall}
+          remainingQuestionsCount={calculateRemainingQuestions()}
+          currentRoomId={currentRoom.id}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
+      </>
+    );
+  }
+
+  if (gameState === 'waiting-premium' && currentRoom && playerName) {
+    return (
+      <>
+        <GameNavigation 
+          playerName={playerName} 
+          onShowHistory={handleShowHistory} 
+          onLogout={handleLogout} 
+        />
+        <WaitingForPremiumScreen
+          creatorName={currentRoom.player1_name}
+          partnerName={playerName}
+        />
+      </>
     );
   }
 
