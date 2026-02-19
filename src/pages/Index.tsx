@@ -93,6 +93,9 @@ const Index = () => {
     getPartnerAnswer 
   } = useAnswers(currentRoom?.id || null, currentRoom?.current_question_id || null);
 
+  const currentEventId = currentRoom?.current_event_id || null;
+  const eventPlayerNameFromRoom = currentRoom?.event_player_name || null;
+
   const {
     events,
     shouldTriggerEvent,
@@ -104,7 +107,7 @@ const Index = () => {
     hasPartnerResponded,
     resetResponses,
     fetchResponses
-  } = useGameEvents(currentRoom?.id || null);
+  } = useGameEvents(currentRoom?.id || null, currentEventId);
 
   const {
     isSupported: pushSupported,
@@ -115,8 +118,14 @@ const Index = () => {
     notifyInApp,
   } = usePushNotifications(currentRoom?.id || null, playerName);
 
-  const playerAnswered = playerName ? answers.some(a => a.player_name === playerName) : false;
-  const partnerAnswered = playerName ? answers.some(a => a.player_name !== playerName) : false;
+  // Filtrage strict par current_question_id pour éviter les mélanges entre questions
+  const activeQuestionId = currentRoom?.current_question_id || null;
+  const playerAnswered = playerName 
+    ? answers.some(a => a.player_name === playerName && a.question_id === activeQuestionId) 
+    : false;
+  const partnerAnswered = playerName 
+    ? answers.some(a => a.player_name !== playerName && a.question_id === activeQuestionId) 
+    : false;
 
   const currentQuestion = currentRoom?.current_question_id 
     ? getQuestionById(currentRoom.current_question_id) 
@@ -125,10 +134,6 @@ const Index = () => {
   const partnerName = currentRoom?.player1_name === playerName 
     ? currentRoom?.player2_name 
     : currentRoom?.player1_name;
-
-  // Extract event fields from room for sync logic
-  const currentEventId = currentRoom?.current_event_id || null;
-  const eventPlayerNameFromRoom = currentRoom?.event_player_name || null;
 
   // Check for existing rooms on mount
   useEffect(() => {
@@ -422,7 +427,36 @@ const Index = () => {
     }
   }, [playerAnswered, partnerAnswered, playerName, currentRoom?.current_question_id, gameState, currentQuestion, getPlayerAnswer, getPartnerAnswer, currentEventId]);
 
-  // Sync event response detection from realtime updates
+  // CORRECTION 3 : Stabilisation post-chargement des réponses
+  // Quand useAnswers finit de charger, si on est en 'question' mais que les deux joueurs
+  // ont déjà répondu (reprise de partie / refresh), restaurer directement le bon état
+  useEffect(() => {
+    if (gameState !== 'question') return;
+    if (!activeQuestionId || !playerName) return;
+    if (currentEventId) return;
+    // Attendre que les réponses soient chargées (au moins 1 présente)
+    if (answers.length === 0) return;
+
+    if (playerAnswered && partnerAnswered) {
+      console.log('[Sync] Stabilisation post-load — les deux ont répondu → reveal');
+      const playerAns = getPlayerAnswer(playerName);
+      const partnerAns = getPartnerAnswer(playerName);
+      if (currentQuestion && playerAns && partnerAns) {
+        setRevealData({
+          questionId: currentQuestion.id,
+          questionText: currentQuestion.question,
+          playerAnswer: { answer: playerAns.answer, skipped: playerAns.skipped ?? false },
+          partnerAnswer: { answer: partnerAns.answer, skipped: partnerAns.skipped ?? false },
+        });
+        setGameState('reveal');
+      }
+    } else if (playerAnswered && !partnerAnswered) {
+      console.log('[Sync] Stabilisation post-load — joueur a répondu → waiting-partner');
+      setGameState('waiting-partner');
+    }
+  }, [answers, gameState, activeQuestionId, playerName, currentEventId]);
+
+
   useEffect(() => {
     if (gameState !== 'event-waiting' && gameState !== 'event') return;
     if (!currentEvent?.requires_both || !playerName) return;
@@ -628,7 +662,25 @@ const Index = () => {
 
   const handleNextQuestion = async () => {
     if (!currentRoom?.current_level || !currentRoom?.current_question_id) return;
-    if (!playerAnswered || !partnerAnswered) return;
+
+    // CORRECTION 4 : Double-check BDD avant d'avancer — évite les sauts de question
+    // si le state local est périmé (race condition)
+    const { data: freshAnswers } = await supabase
+      .from('answers')
+      .select('player_name')
+      .eq('session_id', currentRoom.id)
+      .eq('question_id', currentRoom.current_question_id);
+
+    const freshPlayerAnswered = freshAnswers?.some(a => a.player_name === playerName) ?? false;
+    const freshPartnerAnswered = freshAnswers?.some(a => a.player_name !== playerName) ?? false;
+
+    if (!freshPlayerAnswered || !freshPartnerAnswered) {
+      console.warn('[Sync] handleNextQuestion bloqué — les deux joueurs n\'ont pas répondu en BDD:', {
+        freshPlayerAnswered, freshPartnerAnswered, questionId: currentRoom.current_question_id
+      });
+      return;
+    }
+
 
     setRevealData(null);
     answeredQuestionsCount.current += 1;

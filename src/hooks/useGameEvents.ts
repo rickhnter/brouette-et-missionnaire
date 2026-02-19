@@ -29,7 +29,7 @@ export interface EventResponse {
 
 const EVENT_TRIGGER_PROBABILITY = 0.40; // 40% chance
 
-export const useGameEvents = (sessionId: string | null) => {
+export const useGameEvents = (sessionId: string | null, currentEventId?: string | null) => {
   const [events, setEvents] = useState<GameEvent[]>([]);
   const [responses, setResponses] = useState<EventResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,9 +45,8 @@ export const useGameEvents = (sessionId: string | null) => {
         .order('sort_order', { ascending: true });
 
       if (error) {
-        console.error('Error fetching events:', error);
+        console.error('[Events] Erreur fetch events:', error);
       } else {
-        // Cast the type field from string to EventType
         const typedData = (data || []).map(event => ({
           ...event,
           type: event.type as EventType
@@ -60,7 +59,14 @@ export const useGameEvents = (sessionId: string | null) => {
     fetchEvents();
   }, []);
 
-  // Fetch responses for current session
+  // CORRECTION 2 : Réinitialiser les réponses à chaque changement d'événement actif
+  // Cela évite que les réponses d'un événement précédent contaminent l'événement courant
+  useEffect(() => {
+    console.log('[Events] currentEventId changé →', currentEventId, '— reset des réponses');
+    setResponses([]);
+  }, [currentEventId]);
+
+  // Fetch responses pour l'événement actif — remplace proprement le state (pas de merge)
   const fetchResponses = useCallback(async (eventId: string) => {
     if (!sessionId || !eventId) return;
 
@@ -71,25 +77,29 @@ export const useGameEvents = (sessionId: string | null) => {
       .eq('event_id', eventId);
 
     if (error) {
-      console.error('Error fetching event responses:', error);
+      console.error('[Events] Erreur fetch responses:', error);
     } else {
-      // Merge by ID to avoid losing responses already detected by realtime
+      // Remplacement propre : on ne garde que les réponses de cet eventId
+      // (pas de merge qui accumulerait les réponses d'événements passés)
       setResponses(prev => {
         const merged = [...prev];
         for (const item of (data || [])) {
+          // Ne traiter que les réponses pour l'eventId demandé
+          if (item.event_id !== eventId) continue;
           const existingIdx = merged.findIndex(r => r.id === item.id);
           if (existingIdx >= 0) {
-            merged[existingIdx] = item; // Update existing
+            merged[existingIdx] = item;
           } else {
-            merged.push(item); // Add new
+            merged.push(item);
           }
         }
-        return merged;
+        // Purger les réponses qui ne correspondent plus à l'eventId actif
+        return merged.filter(r => r.event_id === eventId);
       });
     }
   }, [sessionId]);
 
-  // Listen for real-time response updates
+  // Listen for real-time response updates — filtre strict par currentEventId
   useEffect(() => {
     if (!sessionId) return;
 
@@ -106,12 +116,26 @@ export const useGameEvents = (sessionId: string | null) => {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const newResponse = payload.new as EventResponse;
+            
+            // Filtrage strict : ignorer les réponses qui ne sont pas pour l'événement courant
+            if (currentEventId && newResponse.event_id !== currentEventId) {
+              console.log('[Events] Réponse realtime ignorée — event_id différent:', newResponse.event_id, '!==', currentEventId);
+              return;
+            }
+            
             setResponses(prev => {
               if (prev.some(r => r.id === newResponse.id)) return prev;
+              console.log('[Events] Nouvelle réponse realtime de', newResponse.player_name, 'pour event', newResponse.event_id);
               return [...prev, newResponse];
             });
           } else if (payload.eventType === 'UPDATE') {
             const updatedResponse = payload.new as EventResponse;
+            
+            // Filtrage strict pour les updates aussi
+            if (currentEventId && updatedResponse.event_id !== currentEventId) {
+              return;
+            }
+            
             setResponses(prev => 
               prev.map(r => r.id === updatedResponse.id ? updatedResponse : r)
             );
@@ -123,7 +147,7 @@ export const useGameEvents = (sessionId: string | null) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sessionId]);
+  }, [sessionId, currentEventId]);
 
   // Determine if an event should trigger
   const shouldTriggerEvent = useCallback((questionIndex: number): boolean => {
@@ -136,32 +160,26 @@ export const useGameEvents = (sessionId: string | null) => {
 
   // Get a random event for the current level with type balancing
   const getRandomEvent = useCallback((level: number, forcedType?: string): GameEvent | null => {
-    // Filter events by level (can use events from current level or below)
     let eligibleEvents = events.filter(
       e => e.level <= level && !usedEventIds.current.has(e.id)
     );
 
-    // If a specific type is forced, filter to that type
     if (forcedType) {
       const typedEvents = eligibleEvents.filter(e => e.type === forcedType);
       if (typedEvents.length > 0) {
         eligibleEvents = typedEvents;
       }
     } else {
-      // Prioritize underrepresented types (game events specifically)
       const gameEvents = eligibleEvents.filter(e => e.type === 'game');
-      // 50% chance to pick a game event if available and not all used
       if (gameEvents.length > 0 && Math.random() < 0.5) {
         eligibleEvents = gameEvents;
       }
     }
 
     if (eligibleEvents.length === 0) {
-      // Reset used events if all have been used
       usedEventIds.current.clear();
       let allEligible = events.filter(e => e.level <= level);
       
-      // Apply same filtering for forced type
       if (forcedType) {
         const typedEvents = allEligible.filter(e => e.type === forcedType);
         if (typedEvents.length > 0) {
@@ -192,23 +210,20 @@ export const useGameEvents = (sessionId: string | null) => {
   ) => {
     if (!sessionId) return;
 
-    // Check if already responded
     const existingResponse = responses.find(
       r => r.event_id === eventId && r.player_name === playerName
     );
 
     if (existingResponse) {
-      // Update existing response
       const { error } = await supabase
         .from('event_responses')
         .update({ response, completed })
         .eq('id', existingResponse.id);
 
       if (error) {
-        console.error('Error updating event response:', error);
+        console.error('[Events] Erreur update response:', error);
       }
     } else {
-      // Insert new response
       const { error } = await supabase
         .from('event_responses')
         .insert({
@@ -220,12 +235,12 @@ export const useGameEvents = (sessionId: string | null) => {
         });
 
       if (error) {
-        console.error('Error submitting event response:', error);
+        console.error('[Events] Erreur insert response:', error);
       }
     }
   };
 
-  // Get response helpers
+  // Get response helpers — filtrage par eventId strict
   const getPlayerResponse = (eventId: string, playerName: string) => {
     return responses.find(r => r.event_id === eventId && r.player_name === playerName);
   };
