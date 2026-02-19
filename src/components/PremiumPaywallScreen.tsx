@@ -16,9 +16,9 @@ interface PremiumPaywallScreenProps {
 }
 
 const benefits = (remainingQuestionsCount: number) => [
-  `${remainingQuestionsCount} nouvelles questions`,
-  "Intensités 3, 4 et 5 débloquées",
-  "Nouvelles actions spéciales (photos, jeux, ...)",
+  `${remainingQuestionsCount} nouvelles questions approfondies`,
+  "Niveaux 3, 4 et 5 débloqués",
+  "Actions spéciales premium (à venir)",
   "Accès illimité à l'historique complet",
 ];
 
@@ -120,7 +120,8 @@ export const PremiumPaywallScreen = ({
                 <Sparkles className="w-4 h-4 text-rose-500 shrink-0" />
                 <span className="text-rose-700 text-sm font-semibold">
                   Vous avez déjà partagé{" "}
-                  <span className="font-black text-rose-600">{answeredQuestionsCount} moments</span> ensemble
+                  <span className="font-black text-rose-600">{answeredQuestionsCount} questions</span> ensemble, vous ne
+                  voulez pas en savoir plus?
                 </span>
               </div>
             </motion.div>
@@ -150,12 +151,12 @@ export const PremiumPaywallScreen = ({
               animate={{ opacity: 1 }}
               transition={{ delay: 0.7 }}
             >
-              <p className="text-rose-500 text-sm font-medium">💝 Pour le prix d'un café</p>
+              <p className="text-rose-500 text-sm font-medium">Pimentez la suite du jeu pour le prix d'un café</p>
               <div className="flex items-baseline justify-center gap-3">
-                <span className="text-4xl font-black text-rose-700">3,99€</span>
-                <span className="line-through text-muted-foreground text-sm">9,99€</span>
+                <span className="text-4xl font-black text-rose-700">1,99€</span>
+                <span className="line-through text-muted-foreground text-sm">4,99€</span>
               </div>
-              <p className="text-rose-400 text-xs">Accès permanent pour vous deux</p>
+              <p className="text-rose-400 text-xs">Promotion active pour les 50 prochaines rooms seulement.</p>
             </motion.div>
 
             {/* CTA BUTTON */}
@@ -183,7 +184,7 @@ export const PremiumPaywallScreen = ({
                   >
                     {isHovering ? <Heart className="w-5 h-5" fill="white" /> : <Lock className="w-5 h-5" />}
                   </motion.div>
-                  <span>Débloquer maintenant — 3,99€</span>
+                  <span>Continuer le jeu</span>
                 </>
               )}
             </motion.button>
@@ -194,7 +195,6 @@ export const PremiumPaywallScreen = ({
                 <Shield className="w-4 h-4 text-rose-400" />
                 <span className="text-xs font-medium">Paiement 100% sécurisé via Stripe</span>
               </div>
-              <p className="text-xs text-muted-foreground">Satisfait ou remboursé sous 7 jours</p>
             </div>
 
             {/* DISMISS */}
