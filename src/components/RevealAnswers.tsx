@@ -34,7 +34,7 @@ export const RevealAnswers = ({
 }: RevealAnswersProps) => {
   const [showSuggestionModal, setShowSuggestionModal] = useState(false);
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4 pt-24 md:pt-4">
       <Card className="w-full max-w-lg bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-lg font-serif text-rose-800 leading-relaxed">
