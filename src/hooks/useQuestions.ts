@@ -62,9 +62,10 @@ export const useQuestions = () => {
     const currentIndex = questions.findIndex(q => q.id === currentQuestionId);
     
     if (currentIndex === -1) {
-      // Current question not found, start from beginning
-      const firstQuestion = questions[0];
-      return firstQuestion ? { question: firstQuestion, level: firstQuestion.level } : null;
+      // Question non trouvée dans la liste locale — probablement en cours de chargement
+      // NE PAS retourner la première question pour éviter de revenir au début
+      console.warn('[Questions] Question courante non trouvée dans la liste locale — liste en chargement ?', currentQuestionId);
+      return null;
     }
 
     // Get the next question in the global order

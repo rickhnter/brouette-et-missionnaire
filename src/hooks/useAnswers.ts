@@ -29,18 +29,20 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
       .eq('question_id', questionId);
 
     if (error) {
-      console.error('Error fetching answers:', error);
+      console.error('[Answers] Erreur fetch:', error);
     } else {
+      // Toujours remplacer le state avec les réponses strictement pour cette questionId
       setAnswers(data || []);
     }
     setLoading(false);
   }, [sessionId, questionId]);
 
-  // Reset answers quand la question change
+  // Reset answers quand la question change — critique pour éviter les mélanges
   useEffect(() => {
+    console.log('[Answers] Question changée →', questionId, '— reset du state');
     setAnswers([]);
     fetchAnswers();
-  }, [questionId]);
+  }, [questionId, fetchAnswers]);
 
   // Polling toutes les 3 secondes pour synchronisation
   useEffect(() => {
@@ -50,7 +52,7 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
     return () => clearInterval(interval);
   }, [fetchAnswers, sessionId, questionId]);
 
-  // Écouter les nouvelles réponses en temps réel
+  // Écouter les nouvelles réponses en temps réel — filtre strict par question_id
   useEffect(() => {
     if (!sessionId || !questionId) return;
 
@@ -66,14 +68,17 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
         },
         (payload) => {
           const newAnswer = payload.new as Answer;
-          // Ne pas ajouter si la réponse n'est pas pour la question actuelle
-          if (newAnswer.question_id === questionId) {
-            setAnswers(prev => {
-              // Éviter les doublons
-              if (prev.some(a => a.id === newAnswer.id)) return prev;
-              return [...prev, newAnswer];
-            });
+          // Filtrage strict : ignorer les réponses qui ne sont pas pour la question ACTUELLE
+          if (newAnswer.question_id !== questionId) {
+            console.log('[Answers] Réponse realtime ignorée — question_id différent:', newAnswer.question_id, '!==', questionId);
+            return;
           }
+          setAnswers(prev => {
+            // Éviter les doublons
+            if (prev.some(a => a.id === newAnswer.id)) return prev;
+            console.log('[Answers] Nouvelle réponse realtime pour', newAnswer.player_name);
+            return [...prev, newAnswer];
+          });
         }
       )
       .subscribe();
@@ -91,9 +96,21 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
     if (!sessionId || !questionId) return;
 
     // Vérifier si le joueur a déjà répondu à cette question
-    const existingAnswer = answers.find(a => a.player_name === playerName);
+    const existingAnswer = answers.find(a => a.player_name === playerName && a.question_id === questionId);
     if (existingAnswer) {
-      console.log('Player already answered this question');
+      console.log('[Answers] Joueur a déjà répondu à cette question — ignoré');
+      return;
+    }
+
+    // Double-check BDD : vérifier que la question est toujours la question active de la session
+    const { data: sessionData } = await supabase
+      .from('game_sessions')
+      .select('current_question_id')
+      .eq('id', sessionId)
+      .maybeSingle();
+
+    if (sessionData?.current_question_id !== questionId) {
+      console.warn('[Answers] submitAnswer bloqué — la question active en BDD a changé:', sessionData?.current_question_id, '!== local:', questionId);
       return;
     }
 
@@ -111,7 +128,7 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
       if (error) {
         // Si c'est une erreur de doublon, ignorer silencieusement
         if (error.code === '23505') {
-          console.log('Answer already exists (constraint violation)');
+          console.log('[Answers] Réponse déjà existante (contrainte BDD)');
           return;
         }
         throw error;
@@ -120,24 +137,25 @@ export const useAnswers = (sessionId: string | null, questionId: string | null) 
       // Refetch immédiatement après l'insertion
       await fetchAnswers();
     } catch (err) {
-      console.error('Error submitting answer:', err);
+      console.error('[Answers] Erreur soumission:', err);
     }
   };
 
+  // Filtrage strict par questionId pour éviter les mélanges entre questions
   const getPlayerAnswer = (playerName: string) => {
-    return answers.find(a => a.player_name === playerName);
+    return answers.find(a => a.player_name === playerName && a.question_id === questionId);
   };
 
   const getPartnerAnswer = (playerName: string) => {
-    return answers.find(a => a.player_name !== playerName);
+    return answers.find(a => a.player_name !== playerName && a.question_id === questionId);
   };
 
   const hasPlayerAnswered = (playerName: string) => {
-    return answers.some(a => a.player_name === playerName);
+    return answers.some(a => a.player_name === playerName && a.question_id === questionId);
   };
 
   const hasPartnerAnswered = (playerName: string) => {
-    return answers.some(a => a.player_name !== playerName);
+    return answers.some(a => a.player_name !== playerName && a.question_id === questionId);
   };
 
   return {
