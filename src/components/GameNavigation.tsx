@@ -10,8 +10,8 @@ interface GameNavigationProps {
 
 export const GameNavigation = ({ onShowHistory, onLogout, playerName }: GameNavigationProps) => {
   return (
-    <div className="fixed top-0 left-0 right-0 flex justify-center md:justify-between md:left-4 md:right-4 z-50 px-4 pt-2">
-      <img src={logo} alt="Logo" className="h-16 md:h-24 w-auto" />
+    <div className="fixed top-0 left-0 right-0 flex justify-center md:justify-between md:left-4 md:right-4 z-50 px-4 py-3">
+      <img src={logo} alt="Logo" className="h-20 md:h-24 w-auto" />
       <div className="hidden md:flex items-center gap-2">
         <span className="text-sm text-rose-600 mr-2">
           {playerName}
