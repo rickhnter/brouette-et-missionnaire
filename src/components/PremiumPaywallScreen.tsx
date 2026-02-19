@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Lock, Heart, Check, Shield, Sparkles } from "lucide-react";
+import { getPremiumPrice } from "@/lib/premiumUtils";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -153,8 +154,8 @@ export const PremiumPaywallScreen = ({
             >
               <p className="text-rose-500 text-sm font-medium">Pimentez la suite du jeu pour le prix d'un café</p>
               <div className="flex items-baseline justify-center gap-3">
-                <span className="text-4xl font-black text-rose-700">1,99€</span>
-                <span className="line-through text-muted-foreground text-sm">4,99€</span>
+                <span className="text-4xl font-black text-rose-700">{getPremiumPrice()}</span>
+                <span className="line-through text-muted-foreground text-sm">6,99€</span>
               </div>
               <p className="text-rose-400 text-xs">Promotion active pour les 50 prochaines rooms seulement.</p>
             </motion.div>

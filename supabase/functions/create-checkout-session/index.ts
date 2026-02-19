@@ -40,7 +40,7 @@ serve(async (req) => {
               description: "100+ questions supplémentaires (niveaux 3, 4 et 5) pour approfondir votre relation",
               images: [],
             },
-            unit_amount: 199, // 1,99€ en centimes
+            unit_amount: 399, // 3,99€ en centimes
           },
           quantity: 1,
         },

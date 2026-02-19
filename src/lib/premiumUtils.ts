@@ -20,7 +20,7 @@ export const canAccessLevel = (level: number, room: Room | null): boolean => {
  * Returns the display price string for the premium unlock.
  */
 export const getPremiumPrice = (): string => {
-  return "1,99€";
+  return "3,99€";
 };
 
 /**
