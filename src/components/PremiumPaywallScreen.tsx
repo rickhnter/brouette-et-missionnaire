@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Lock, Heart, Check, Shield, Sparkles } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Lock, Heart, Check, Shield, Sparkles } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface PremiumPaywallScreenProps {
   playerName: string;
@@ -17,16 +17,16 @@ interface PremiumPaywallScreenProps {
 
 const benefits = (remainingQuestionsCount: number) => [
   `${remainingQuestionsCount} nouvelles questions approfondies`,
-  "Niveaux 3, 4 et 5 débloqués",
-  "Actions spéciales premium (à venir)",
-  "Accès illimité à l'historique complet",
+  'Niveaux 3, 4 et 5 débloqués',
+  'Actions spéciales premium (à venir)',
+  'Accès illimité à l\'historique complet',
 ];
 
 // Floating heart animation component
 const FloatingHeart = ({ delay, x, size }: { delay: number; x: string; size: number }) => (
   <motion.div
     className="absolute pointer-events-none select-none"
-    style={{ left: x, bottom: "-10%" }}
+    style={{ left: x, bottom: '-10%' }}
     initial={{ y: 0, opacity: 0 }}
     animate={{
       y: [0, -600],
@@ -36,7 +36,7 @@ const FloatingHeart = ({ delay, x, size }: { delay: number; x: string; size: num
       duration: 6 + delay,
       repeat: Infinity,
       delay: delay,
-      ease: "easeOut",
+      ease: 'easeOut',
     }}
   >
     <span style={{ fontSize: size }}>💕</span>
@@ -58,16 +58,16 @@ export const PremiumPaywallScreen = ({
   const handlePayment = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: { roomId: currentRoomId, playerName },
       });
       if (error || !data?.url) {
-        throw new Error(error?.message || "Impossible de créer la session de paiement");
+        throw new Error(error?.message || 'Impossible de créer la session de paiement');
       }
       // Redirection vers Stripe Checkout — setIsLoading(false) non appelé car on quitte la page
       window.location.href = data.url;
     } catch (err: any) {
-      toast.error("Erreur lors du paiement : " + err.message);
+      toast.error('Erreur lors du paiement : ' + err.message);
       setIsLoading(false);
     }
   };
@@ -89,7 +89,7 @@ export const PremiumPaywallScreen = ({
         className="w-full max-w-md z-10"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
       >
         <Card className="shadow-2xl bg-white/90 backdrop-blur-sm border-rose-200 overflow-hidden">
           {/* Top gradient stripe */}
@@ -101,12 +101,16 @@ export const PremiumPaywallScreen = ({
               <motion.div
                 className="text-4xl mb-3"
                 animate={{ rotate: [0, -10, 10, -10, 0] }}
-                transition={{ duration: 1.2, delay: 0.6, ease: "easeInOut" }}
+                transition={{ duration: 1.2, delay: 0.6, ease: 'easeInOut' }}
               >
                 🔓
               </motion.div>
-              <h1 className="text-2xl font-bold text-rose-800 leading-tight">Continuez votre aventure à deux</h1>
-              <p className="text-rose-500 text-sm font-medium">Ne vous arrêtez pas maintenant, {playerName} !</p>
+              <h1 className="text-2xl font-bold text-rose-800 leading-tight">
+                Continuez votre aventure à deux
+              </h1>
+              <p className="text-rose-500 text-sm font-medium">
+                Ne vous arrêtez pas maintenant, {playerName} !
+              </p>
             </div>
 
             {/* SOCIAL PROOF */}
@@ -119,9 +123,11 @@ export const PremiumPaywallScreen = ({
               <div className="bg-gradient-to-r from-rose-100 to-pink-100 border border-rose-200 rounded-full px-5 py-2.5 flex items-center gap-2 shadow-sm">
                 <Sparkles className="w-4 h-4 text-rose-500 shrink-0" />
                 <span className="text-rose-700 text-sm font-semibold">
-                  Vous avez déjà partagé{" "}
-                  <span className="font-black text-rose-600">{answeredQuestionsCount} moments</span> ensemble, vous
-                  commenciez tout juste à bien vous connaître..
+                  Vous avez déjà partagé{' '}
+                  <span className="font-black text-rose-600">
+                    {answeredQuestionsCount} moments
+                  </span>{' '}
+                  ensemble
                 </span>
               </div>
             </motion.div>
@@ -151,12 +157,12 @@ export const PremiumPaywallScreen = ({
               animate={{ opacity: 1 }}
               transition={{ delay: 0.7 }}
             >
-              <p className="text-rose-500 text-sm font-medium">Débloquez toutes les cartes pour le prix d'un café</p>
+              <p className="text-rose-500 text-sm font-medium">💝 Pour le prix d'un café</p>
               <div className="flex items-baseline justify-center gap-3">
-                <span className="text-4xl font-black text-rose-700">2,99€</span>
-                <span className="line-through text-muted-foreground text-sm">5,99€</span>
+                <span className="text-4xl font-black text-rose-700">3,99€</span>
+                <span className="line-through text-muted-foreground text-sm">9,99€</span>
               </div>
-              <p className="text-rose-400 text-xs">Promotion limitée aux 50 prochaines rooms</p>
+              <p className="text-rose-400 text-xs">Accès permanent pour vous deux</p>
             </motion.div>
 
             {/* CTA BUTTON */}
@@ -177,14 +183,18 @@ export const PremiumPaywallScreen = ({
               ) : (
                 <>
                   <motion.div
-                    key={isHovering ? "heart" : "lock"}
+                    key={isHovering ? 'heart' : 'lock'}
                     initial={{ scale: 0.7, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.15 }}
                   >
-                    {isHovering ? <Heart className="w-5 h-5" fill="white" /> : <Lock className="w-5 h-5" />}
+                    {isHovering ? (
+                      <Heart className="w-5 h-5" fill="white" />
+                    ) : (
+                      <Lock className="w-5 h-5" />
+                    )}
                   </motion.div>
-                  <span>Continuer le jeu</span>
+                  <span>Débloquer maintenant — 3,99€</span>
                 </>
               )}
             </motion.button>
@@ -195,6 +205,9 @@ export const PremiumPaywallScreen = ({
                 <Shield className="w-4 h-4 text-rose-400" />
                 <span className="text-xs font-medium">Paiement 100% sécurisé via Stripe</span>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Satisfait ou remboursé sous 7 jours
+              </p>
             </div>
 
             {/* DISMISS */}
