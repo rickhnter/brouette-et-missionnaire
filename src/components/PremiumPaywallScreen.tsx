@@ -16,7 +16,7 @@ interface PremiumPaywallScreenProps {
 }
 
 const benefits = (remainingQuestionsCount: number) => [
-  `${remainingQuestionsCount} nouvelles questions',
+  `${remainingQuestionsCount} nouvelles questions`,
   'Niveaux 3, 4 et 5 débloqués 🥵',
   'Nouvelles actions (photos, jeux, ...)',
   'Accès illimité à l\'historique complet',
