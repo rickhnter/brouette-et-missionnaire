@@ -120,7 +120,8 @@ export const PremiumPaywallScreen = ({
                 <Sparkles className="w-4 h-4 text-rose-500 shrink-0" />
                 <span className="text-rose-700 text-sm font-semibold">
                   Vous avez déjà partagé{" "}
-                  <span className="font-black text-rose-600">{answeredQuestionsCount} moments</span> ensemble
+                  <span className="font-black text-rose-600">{answeredQuestionsCount} questions</span> ensemble, vous ne
+                  voulez pas en savoir plus?
                 </span>
               </div>
             </motion.div>
@@ -153,9 +154,9 @@ export const PremiumPaywallScreen = ({
               <p className="text-rose-500 text-sm font-medium">Pimentez la suite du jeu pour le prix d'un café</p>
               <div className="flex items-baseline justify-center gap-3">
                 <span className="text-4xl font-black text-rose-700">1,99€</span>
-                <span className="line-through text-muted-foreground text-sm">3,99€</span>
+                <span className="line-through text-muted-foreground text-sm">4,99€</span>
               </div>
-              <p className="text-rose-400 text-xs">Promotion active pour les 50 prochaines rooms.</p>
+              <p className="text-rose-400 text-xs">Promotion active pour les 50 prochaines rooms seulement.</p>
             </motion.div>
 
             {/* CTA BUTTON */}
