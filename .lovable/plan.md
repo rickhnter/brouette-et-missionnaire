@@ -1,177 +1,79 @@
 
-# Stratégie de synchronisation — Diagnostic complet et plan de correction
+## Mise à jour du prix à 3,99 € + stratégie de stockage du statut de paiement
 
-## Diagnostic des 3 problèmes rapportés
+### 1. Correction du prix (3 fichiers)
 
-### Problème 1 : "On reprend et on reparcourt toutes les questions"
+**`supabase/functions/create-checkout-session/index.ts`**
+- `unit_amount: 199` → `unit_amount: 399` (3,99€ en centimes)
 
-**Cause racine** : Quand on reprend la partie (`resumeRoom`), le `useEffect` de restauration d'état (lignes 241-259 de Index.tsx) contient cette logique :
+**`src/lib/premiumUtils.ts`**
+- `getPremiumPrice()` retourne `"1,99€"` → `"3,99€"`
+- `getPremiumPriceInCents()` retourne `199` → `399`
 
-```typescript
-if (playerAnswered && partnerAnswered) {
-  setGameState('reveal');
-} else if (playerAnswered && !partnerAnswered) {
-  setGameState('waiting-partner');
-} else {
-  setGameState('question');  // ← TOUJOURS atteint car useAnswers prend du temps à charger
-}
-```
-
-Le problème : `useAnswers` est **asynchrone**. Au moment où ce `useEffect` s'exécute, `playerAnswered` et `partnerAnswered` sont `false` (les réponses n'ont pas encore été chargées depuis la base). Il part donc toujours en `'question'` — mais la question actuelle est correcte (elle vient de `current_question_id` en BDD). Ce n'est pas le problème.
-
-**Vrai problème** : `answeredQuestionsCount.current` est remis à 0 à chaque reprise. Cette valeur locale contrôle le déclenchement des événements via `shouldTriggerEvent`. Elle est réinitialisée via `initializeAnsweredCount` (lignes 354-371), mais ce code compte les questions **avec au moins une réponse** — pas les questions complètes. Si le partenaire n'a pas répondu à toutes, le compte peut être faux.
-
-**Deuxième vrai problème — le plus grave** : Dans `getNextQuestion` (useQuestions.ts ligne 64-66), si `currentQuestionId` n'est pas trouvé dans la liste locale `questions[]` (race condition entre realtime et chargement des questions), il retourne la **première question** du jeu. Cela provoque un retour au début.
-
-### Problème 2 : "L'action récupère les réponses d'une action précédente"
-
-**Cause racine** : `useGameEvents` stocke `responses` dans un state React global pour la session entière. Il n'est **jamais réinitialisé** entre événements sauf lors d'un appel explicite à `resetResponses()`. Or :
-
-1. `fetchResponses(eventId)` fait un **merge** des réponses (ligne 77-88 de useGameEvents.ts) mais ne filtre **jamais** par `eventId` dans le state — il ajoute tout. Résultat : `responses` accumule les réponses de TOUS les événements passés.
-
-2. `hasPlayerResponded(eventId, playerName)` et `hasPartnerResponded(eventId, playerName)` filtrent bien par `eventId`. MAIS `getPlayerResponse` et `getPartnerResponse` font `responses.find(r => r.event_id === eventId && ...)` — correct en principe.
-
-3. Le vrai bug : Quand le realtime reçoit une INSERT sur `event_responses`, il l'ajoute dans `responses` **sans vérifier si c'est l'événement courant**. Si un ancien événement avait une réponse qui arrive en retard via realtime, elle s'ajoute et peut fausser les comptages.
-
-4. **Pire** : `fetchResponses` est appelé sans `eventId` — il prend l'`eventId` en paramètre mais le state `responses` n'est jamais vidé avant un nouveau fetch pour un nouvel événement. La résiduelle des anciennes réponses reste.
-
-### Problème 3 : "L'autre joueur saute une question et les réponses sont mélangées"
-
-**Cause racine** : Dans `useAnswers`, `getPartnerAnswer(playerName)` est défini comme :
-```typescript
-return answers.find(a => a.player_name !== playerName);
-```
-
-Si la question change (partenaire avance) mais que `answers` n'est pas encore rafraîchi, cette fonction peut retourner une réponse de l'ancienne question. Plus précisément :
-
-- Le partenaire répond et appelle `handleNextQuestion` qui met à jour `current_question_id` en BDD.
-- Le realtime déclenche la mise à jour de `currentRoom` avec le nouveau `current_question_id`.
-- `useAnswers` devrait se réinitialiser (via `useEffect` sur `questionId`), mais il y a un délai.
-- Si `answers` contient encore les réponses de l'ancienne question quand `playerAnswered && partnerAnswered` est évalué, on se retrouve en `reveal` avec les mauvaises réponses — ou pire, on passe à la question suivante sans que l'autre ait répondu.
-
-**Root cause complémentaire** : Le réinitialisateur de `answers` dans `useAnswers` fait `setAnswers([])` puis `fetchAnswers()`, mais si la question change rapidement (race condition), le state peut contenir temporairement des réponses mixtes.
+**`src/components/PremiumPaywallScreen.tsx`**
+- Affichage du prix : `1,99€` → `3,99€`
+- Prix barré : `4,99€` → `6,99€` (pour maintenir la cohérence marketing)
+- Utiliser `getPremiumPrice()` depuis `premiumUtils.ts` pour centraliser
 
 ---
 
-## Solution : 4 corrections précises
+### 2. Stratégie de stockage du statut de paiement
 
-### Correction 1 — `useAnswers.ts` : Filtrage strict par `question_id` dans le state
+Le schéma actuel est déjà bien pensé. Voici l'architecture en place et les améliorations proposées :
 
-**Problème** : Le state `answers` peut contenir des réponses d'autres questions (race condition + realtime).
+**Ce qui existe déjà (et qu'on garde) :**
 
-**Fix** : Toujours filtrer le state par `questionId` courant avant d'exposer les données. Ajouter une protection dans `submitAnswer` pour s'assurer qu'on ne soumet une réponse qu'à la question **actuellement active** en BDD.
+```text
+game_sessions
+  ├── premium_unlocked       boolean  (source de vérité pour le jeu)
+  ├── premium_unlocked_by    text     (nom du joueur payeur)
+  ├── premium_unlocked_at    timestamp
+  └── stripe_payment_id      text     (payment_intent Stripe)
 
-```typescript
-// Dans getPlayerAnswer et getPartnerAnswer, filtrer aussi par question_id
-const getPlayerAnswer = (playerName: string) => {
-  return answers.find(a => a.player_name === playerName && a.question_id === questionId);
-};
-const getPartnerAnswer = (playerName: string) => {
-  return answers.find(a => a.player_name !== playerName && a.question_id === questionId);
-};
+payments (table de log)
+  ├── session_id             uuid     (lien vers la game_session)
+  ├── stripe_session_id      text
+  ├── stripe_payment_intent_id text
+  ├── amount                 integer  (en centimes)
+  ├── currency               text
+  ├── status                 text     ('pending' | 'completed')
+  ├── player_name            text
+  ├── created_at
+  └── completed_at
 ```
 
-Et dans les computed values du state :
-```typescript
-const playerAnswered = playerName 
-  ? answers.some(a => a.player_name === playerName && a.question_id === currentRoom?.current_question_id) 
-  : false;
+**Problème identifié — double source de vérité incohérente :**
+
+Actuellement `getPremiumPriceInCents()` retourne `399` dans `premiumUtils.ts` mais l'edge function envoie `199` à Stripe. Après la mise à jour, tout sera aligné sur `399`.
+
+**Problème identifié — le fallback dans le webhook :**
+
+```ts
+amount: session.amount_total || 399
 ```
 
-### Correction 2 — `useGameEvents.ts` : Isolation des réponses par événement courant
+`session.amount_total` est toujours renvoyé par Stripe pour un paiement réussi, donc ce fallback ne sert qu'en cas d'erreur. On le mettra à jour à `399` aussi par cohérence.
 
-**Problème** : Le state `responses` accumule toutes les réponses d'événements passés.
+**Ce qui fonctionne correctement :**
 
-**Fix** : 
-1. Ajouter `currentEventId` comme param à `useGameEvents` pour filtrer le state automatiquement.
-2. Réinitialiser `responses` à chaque changement d'`eventId` actif (via `useEffect`).
-3. Dans `fetchResponses`, remplacer la stratégie de merge par un remplacement propre filtré par `eventId`.
+1. **Flux principal** : Stripe Checkout → webhook → `game_sessions.premium_unlocked = true` + insert dans `payments`
+2. **Sécurité** : la mise à jour se fait côté serveur (edge function avec `SUPABASE_SERVICE_ROLE_KEY`), pas côté client
+3. **Sync temps réel** : `Index.tsx` fait un polling de la room toutes les 2s pour détecter le déblocage premium pour le partenaire
+4. **Redirection post-paiement** : `?premium=success` dans l'URL force un re-fetch immédiat
 
-```typescript
-// Dans le hook, réinitialiser responses quand l'événement change
-useEffect(() => {
-  setResponses([]);
-}, [currentEventId]); // currentEventId passé en paramètre
-```
+**Recommandation architecture (pas de changement de schema nécessaire) :**
 
-### Correction 3 — `Index.tsx` : Restauration d'état fiable au resume/refresh
-
-**Problème** : L'état est restauré avant que les réponses soient chargées, résultant toujours en `gameState('question')`.
-
-**Fix** : Séparer la restauration d'état en deux phases :
-1. Phase 1 (immédiate) : Récupérer `current_question_id` et `current_event_id` depuis la room.
-2. Phase 2 (après chargement des réponses) : Corriger le `gameState` en fonction des réponses réelles.
-
-Nouveau `useEffect` de "stabilisation post-chargement" :
-```typescript
-// Quand les réponses sont chargées ET qu'on est en état 'question' mais 
-// les deux joueurs ont déjà répondu → restaurer 'reveal'
-useEffect(() => {
-  if (gameState !== 'question') return;
-  if (!currentRoom?.current_question_id || !playerName) return;
-  if (answers.length < 2) return; // Attendre que les réponses soient chargées
-  
-  if (playerAnswered && partnerAnswered) {
-    // Les deux ont répondu : aller directement au reveal
-    const playerAns = getPlayerAnswer(playerName);
-    const partnerAns = getPartnerAnswer(playerName);
-    if (currentQuestion && playerAns && partnerAns) {
-      setRevealData({ ... });
-      setGameState('reveal');
-    }
-  } else if (playerAnswered && !partnerAnswered) {
-    setGameState('waiting-partner');
-  }
-}, [answers, gameState]);
-```
-
-### Correction 4 — `Index.tsx` : Protection contre les sauts de question
-
-**Problème** : `handleNextQuestion` peut être appelé avant que les deux joueurs aient répondu.
-
-**Fix** : La condition `if (!playerAnswered || !partnerAnswered) return;` existe déjà (ligne 631), mais elle utilise les variables locales potentiellement périmées. Ajouter une **vérification BDD en temps réel** avant d'avancer :
-
-```typescript
-const handleNextQuestion = async () => {
-  if (!currentRoom?.current_level || !currentRoom?.current_question_id) return;
-  
-  // Double-check : relire les réponses depuis la BDD avant d'avancer
-  const { data: freshAnswers } = await supabase
-    .from('answers')
-    .select('player_name')
-    .eq('session_id', currentRoom.id)
-    .eq('question_id', currentRoom.current_question_id);
-  
-  const freshPlayerAnswered = freshAnswers?.some(a => a.player_name === playerName);
-  const freshPartnerAnswered = freshAnswers?.some(a => a.player_name !== playerName);
-  
-  if (!freshPlayerAnswered || !freshPartnerAnswered) {
-    console.warn('[Sync] handleNextQuestion bloqué — partenaire pas encore répondu');
-    return;
-  }
-  
-  // ... rest of the function
-};
-```
+La structure actuelle est robuste. Le seul vrai risque est un webhook qui échoue après le paiement Stripe (ex: timeout). Pour y remédier à l'avenir (hors scope de ce ticket) on pourrait ajouter une vérification côté client du `stripe_session_id` via l'API Stripe, mais c'est facultatif car le webhook Stripe réessaie automatiquement en cas d'échec.
 
 ---
 
-## Résumé des fichiers à modifier
+### Résumé des changements
 
 | Fichier | Changement |
 |---|---|
-| `src/hooks/useAnswers.ts` | Filtrage strict par `question_id` dans `getPlayerAnswer`, `getPartnerAnswer` + double-check avant submit |
-| `src/hooks/useGameEvents.ts` | Réinitialisation automatique de `responses` au changement d'événement + isolation des réponses |
-| `src/pages/Index.tsx` | Restauration d'état post-chargement réponses + double-check BDD dans `handleNextQuestion` + correction du filtrage `playerAnswered`/`partnerAnswered` |
+| `supabase/functions/create-checkout-session/index.ts` | `unit_amount: 199` → `399` |
+| `src/lib/premiumUtils.ts` | Prix affiché et en centimes → 3,99€ / 399 |
+| `src/components/PremiumPaywallScreen.tsx` | Affichage `1,99€` → `3,99€`, prix barré `4,99€` → `6,99€`, import `getPremiumPrice` |
+| `supabase/functions/stripe-webhook/index.ts` | Fallback `amount || 399` déjà correct, aucun changement |
 
-## Ordre d'implémentation
-
-1. Corriger `useAnswers.ts` (filtre question_id)
-2. Corriger `useGameEvents.ts` (isolation par eventId)
-3. Corriger `Index.tsx` (restauration, double-check, filtrage)
-
-## Ce qui n'est PAS dans ce plan
-
-- Aucune migration de BDD requise — tous les bugs sont logiques, pas de schéma manquant
-- Aucune modification de l'architecture — on corrige les bugs dans les hooks existants
-- Le système Realtime reste en place — on l'améliore, on ne le remplace pas
+L'edge function sera redéployée automatiquement après la modification.
