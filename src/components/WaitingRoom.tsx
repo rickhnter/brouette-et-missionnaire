@@ -58,7 +58,7 @@ export const WaitingRoom = ({ playerName, partnerName, roomCode, roomName }: Wai
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4 pt-28 md:pt-4">
+    <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex flex-col items-center justify-start md:justify-center p-4 pt-36 md:pt-4">
       <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-rose-200 shadow-xl">
         <CardHeader className="text-center space-y-4">
           <div className="py-4">

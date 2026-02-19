@@ -27,7 +27,7 @@ export const PartnerEventNotification: React.FC<PartnerEventNotificationProps> =
   // État de chargement - en attente que le partenaire termine son action
   if (isWaiting) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex flex-col items-center justify-center p-4 pt-28 md:pt-4">
+      <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex flex-col items-center justify-start md:justify-center p-4 pt-36 md:pt-4">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -104,7 +104,7 @@ export const PartnerEventNotification: React.FC<PartnerEventNotificationProps> =
 
   // État complet - le partenaire a terminé son action
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex flex-col items-center justify-center p-4 pt-28 md:pt-4">
+    <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex flex-col items-center justify-start md:justify-center p-4 pt-36 md:pt-4">
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}

@@ -133,7 +133,7 @@ export const AnimatedEventBackground: React.FC<AnimatedEventBackgroundProps> = (
       </div>
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-4 pt-28 md:pt-4">
+      <div className="relative z-10 flex flex-col items-center justify-start md:justify-center min-h-screen p-4 pt-36 md:pt-4">
         {children}
       </div>
     </div>
