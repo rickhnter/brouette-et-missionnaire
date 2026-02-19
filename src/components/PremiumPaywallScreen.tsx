@@ -4,6 +4,7 @@ import { Lock, Heart, Check, Shield, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import logo from "@/assets/logo.png";
 
 interface PremiumPaywallScreenProps {
   playerName: string;
@@ -15,10 +16,10 @@ interface PremiumPaywallScreenProps {
   onDismiss?: () => void;
 }
 
-const benefits = (remainingQuestionsCount: number) => [
-  `${remainingQuestionsCount} nouvelles questions approfondies`,
-  "Niveaux 3, 4 et 5 débloqués",
-  "Actions spéciales premium (à venir)",
+const benefits = [
+  "+100 nouvelles questions",
+  "Intensités 3, 4 et 5 débloquées",
+  "Nouvelles cartes actions spéciales",
   "Accès illimité à l'historique complet",
 ];
 
@@ -64,7 +65,6 @@ export const PremiumPaywallScreen = ({
       if (error || !data?.url) {
         throw new Error(error?.message || "Impossible de créer la session de paiement");
       }
-      // Redirection vers Stripe Checkout — setIsLoading(false) non appelé car on quitte la page
       window.location.href = data.url;
     } catch (err: any) {
       toast.error("Erreur lors du paiement : " + err.message);
@@ -72,10 +72,8 @@ export const PremiumPaywallScreen = ({
     }
   };
 
-  const benefitsList = benefits(remainingQuestionsCount);
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 flex flex-col items-center justify-start md:justify-center p-4 pt-36 md:pt-4 relative overflow-hidden">
       {/* Floating hearts background */}
       <FloatingHeart delay={0} x="10%" size={16} />
       <FloatingHeart delay={1.5} x="25%" size={12} />
@@ -98,12 +96,14 @@ export const PremiumPaywallScreen = ({
           <CardContent className="p-6 sm:p-8 space-y-6">
             {/* HEADER */}
             <div className="text-center space-y-2">
+              {/* Logo on mobile, emoji on desktop */}
               <motion.div
-                className="text-4xl mb-3"
+                className="mb-3 flex justify-center"
                 animate={{ rotate: [0, -10, 10, -10, 0] }}
                 transition={{ duration: 1.2, delay: 0.6, ease: "easeInOut" }}
               >
-                🔓
+                <img src={logo} alt="Logo" className="h-16 w-auto md:hidden" />
+                <span className="hidden md:block text-4xl">🔓</span>
               </motion.div>
               <h1 className="text-2xl font-bold text-rose-800 leading-tight">Continuez votre aventure à deux</h1>
               <p className="text-rose-500 text-sm font-medium">Ne vous arrêtez pas maintenant, {playerName} !</p>
@@ -128,7 +128,7 @@ export const PremiumPaywallScreen = ({
 
             {/* BENEFITS */}
             <div className="space-y-3">
-              {benefitsList.map((benefit, index) => (
+              {benefits.map((benefit, index) => (
                 <motion.div
                   key={index}
                   className="flex items-center gap-3"
