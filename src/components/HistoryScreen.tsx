@@ -76,7 +76,7 @@ export const HistoryScreen = ({ sessionId, onBack }: HistoryScreenProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 p-4">
-      <div className="max-w-2xl mx-auto space-y-6 pt-16">
+      <div className="max-w-2xl mx-auto space-y-6 pt-20 md:pt-6">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
