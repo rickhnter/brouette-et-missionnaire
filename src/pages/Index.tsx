@@ -355,6 +355,45 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [currentEventId, gameState, playerName, eventPlayerNameFromRoom, events]);
 
+  // Auto-recovery: if event is active but both players already responded, clear it
+  useEffect(() => {
+    if (!currentEventId || !currentRoom?.id || !playerName) return;
+    
+    const event = events.find(e => e.id === currentEventId);
+    if (!event) return;
+
+    const checkStuckEvent = async () => {
+      // Fetch fresh responses from DB
+      const { data: responses } = await supabase
+        .from('event_responses')
+        .select('player_name, completed')
+        .eq('session_id', currentRoom.id)
+        .eq('event_id', currentEventId);
+
+      if (!responses || responses.length < 2) return;
+
+      const allCompleted = responses.every(r => r.completed);
+      if (!allCompleted) return;
+
+      // Both responded — if we're the leader, clear the stuck event
+      const isLeader = event.requires_both
+        ? playerName === currentRoom.player1_name
+        : eventPlayerNameFromRoom === playerName;
+
+      if (isLeader) {
+        console.log('[Recovery] Événement bloqué détecté — auto-clear', currentEventId);
+        await supabase
+          .from('game_sessions')
+          .update({ current_event_id: null, event_player_name: null })
+          .eq('id', currentRoom.id);
+      }
+    };
+
+    // Run after a delay to give normal flow time to work
+    const timeout = setTimeout(checkStuckEvent, 5000);
+    return () => clearTimeout(timeout);
+  }, [currentEventId, currentRoom?.id, playerName, events, eventPlayerNameFromRoom]);
+
   // Initialize answered count
   useEffect(() => {
     const initializeAnsweredCount = async () => {
@@ -1135,7 +1174,38 @@ const Index = () => {
     );
   }
 
-  return null;
+  // Fallback recovery UI instead of white screen
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 px-6 text-center">
+      <div className="text-4xl">⏳</div>
+      <p className="text-rose-800 text-lg font-medium">Synchronisation en cours…</p>
+      <p className="text-rose-500 text-sm">Si cela persiste, actualise la page.</p>
+      <div className="flex gap-3">
+        {currentRoom?.id && (
+          <button
+            onClick={handleShowHistory}
+            className="px-6 py-3 rounded-xl bg-white/80 text-rose-700 font-semibold text-sm hover:bg-white transition-colors border border-rose-200"
+          >
+            📖 Historique
+          </button>
+        )}
+        <button
+          onClick={() => window.location.reload()}
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-rose-400 to-pink-500 text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+        >
+          Actualiser
+        </button>
+      </div>
+      {currentRoom?.id && (
+        <button
+          onClick={handleLogout}
+          className="text-rose-400 text-xs hover:text-rose-600 transition-colors mt-2"
+        >
+          Quitter la room
+        </button>
+      )}
+    </div>
+  );
 };
 
 export default Index;
